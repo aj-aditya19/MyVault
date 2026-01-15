@@ -1,0 +1,50 @@
+Problem Statement - People set goals, learn daily, spend money, and make rules for life, but these are scattered across notebooks, apps, and memory. There is no single platform that tracks personal growth, discipline, and finances together in an organized and offline-first way.
+
+Introduction - I want to make an App in which a user can set their goals, their quotes, their learning, their rules of life and more and also see the money he is spending per month or per day. In this a user can set their daily goals, monthly goals, yearly goals, weekly goals and record them and get notification about that goals to complete them at time. It helps them to see that what they does in the entire month , week, or in a day also. So this is the basic idea of this.
+
+Target - Students - focus only on them only.
+
+Pages - Schedule
+	Task - day, weeks, months, year
+	Quotes - like what they learn, or what they gain ( knowledge ).
+	Rules - The rules which he/she want's to follow in their life
+	Learning - learning of his/her life
+	Money - in this it sees their money records
+
+Core Features ->>
+	-> Daily / Weekly / Monthly / Yearly goals
+	-> Task reminders & notifications
+	-> Quotes & life lessons storage
+	-> Personal rules tracking
+	-> Learning journal
+	-> Expense tracking (daily & monthly)
+	-> Offline-first storage
+	-> Analytics (what user did in a day/week/month)
+
+Future plans -> Personal AI assistant - help them to achieve their goals
+	      Family or friends integration - can also connect with family members or friends
+
+Tech Stack-> Flutter - for app
+	     React.js - for web
+	     Local storage - helps to store data locally and work offline
+	     Node.js, Express.js - for backend
+
+Deadline ->  22-01-2026     
+Hours    ->  44 hours { as planned }
+Chances  ->  10%
+
+Plan - The plan that I believe that if I work according to the plane then i will make the project that i want to make as that was my aim.
+      ---------------------------------------------------------------------------------------------------------------------------------------------------
+      |   Date   |                    What to do                                                                | Time Needed  |    Work hours 		|
+      |--------------------------------------------------------------------------------------------------------------------------------------------------
+      | 16-01-26 | Start the project, UI/UX design ruff, note schema, make backend, or sign or login feature    |    5h	       |  1h-clg, 5-6, 9-12	| 
+      | 17-01-26 | A page or rules, learning, quotes, and schedule page                           		|    10h       |     Entire day		|
+      | 18-01-26 | money page in this day and task page will be completed 50% this day 				|    10h       |     Entire day		|
+      | 19-01-26 | complete the task page this day								|    5h	       |  1h-clg, 5-6, 9-12	|
+      | 20-01-26 | completed the entire app like local storage, notification system				|    5h	       |    2-6, 9-11		|
+      | 21-01-26 | fix bugs and host it										|    5h	       |  1h-clg, 5-6, 9-12	|
+      | 22-01-26 | documentation of this project and report of this project  					|    4h	       |   5-6, 9-12		|
+      ---------------------------------------------------------------------------------------------------------------------------------------------------
+
+Reality-
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
