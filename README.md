@@ -11,6 +11,6 @@ Remaining Work
 -Final testing and polishing
 -Local storage managine.
 
-I have not shared this project publicly yet because it is still in an early stage and requires proper UI/UX before release. On 7 February 2026, I will complete the remaining work and officially publish the project on GitHub, making it available for everyone.
+I have not shared this project publicly yet because it is still in an early stage and requires proper UI/UX before release. On 18 February 2026, I will complete the remaining work and officially publish the project on GitHub, making it available for everyone.
 
 Thank you, I hope this project helps students stay organized and improve their personal growth and financial discipline.
