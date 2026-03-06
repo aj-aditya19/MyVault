@@ -41,6 +41,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:io';
+import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:path_provider/path_provider.dart';
 
 class WeeklyTask extends StatefulWidget {
@@ -56,14 +57,30 @@ class _WeeklyTaskState extends State<WeeklyTask> {
   Map<String, List<Map<String, dynamic>>> allWeeklyTasks = {};
   late File weeklyFile;
 
-  // 🔥 Get Thursday-based week number
+  late final encrypt.Key key;
+  late final encrypt.Encrypter encrypter;
+
+  String encryptData(String data) {
+    final iv = encrypt.IV.fromSecureRandom(16);
+    final encrypted = encrypter.encrypt(data, iv: iv);
+    final combined = iv.bytes + encrypted.bytes;
+    return base64Encode(combined);
+  }
+
+  String decrypt(String base64Data) {
+    final combined = base64Decode(base64Data);
+    final iv = encrypt.IV(combined.sublist(0, 16));
+    final encryptedBytes = combined.sublist(16);
+    final encrypted = encrypt.Encrypted(encryptedBytes);
+    return encrypter.decrypt(encrypted, iv: iv);
+  }
+
   String get currentWeekKey {
     DateTime now = DateTime.now();
     int year = now.year;
 
     DateTime firstJan = DateTime(year, 1, 1);
 
-    // Find first Thursday
     int difference = (DateTime.thursday - firstJan.weekday) % 7;
     DateTime firstThursday = firstJan.add(Duration(days: difference));
 
@@ -89,14 +106,16 @@ class _WeeklyTaskState extends State<WeeklyTask> {
 
     if (!await weeklyFile.exists()) {
       await weeklyFile.create();
-      await weeklyFile.writeAsString(jsonEncode({}));
+      await weeklyFile.writeAsString(encryptData(jsonEncode({})));
     }
 
     String content = await weeklyFile.readAsString();
 
-    if (content.isNotEmpty) {
-      Map decoded = jsonDecode(content);
-
+    if (content.isEmpty) return;
+    try {
+      final decrypted = decrypt(content);
+      Map<String, dynamic> decoded = jsonDecode(decrypted);
+      decoded = jsonDecode(decrypted);
       setState(() {
         allWeeklyTasks = decoded.map<String, List<Map<String, dynamic>>>(
           (key, value) => MapEntry(
@@ -109,6 +128,32 @@ class _WeeklyTaskState extends State<WeeklyTask> {
           ),
         );
       });
+    } catch (e) {
+      print("Data is not encrypted. Encrypting old data now....");
+      try {
+        Map<String, dynamic> decoded = jsonDecode(content);
+        String encrypted = encryptData(jsonEncode(decoded));
+        await weeklyFile.writeAsString(encrypted);
+
+        setState(() {
+          allWeeklyTasks = decoded.map<String, List<Map<String, dynamic>>>(
+            (key, value) => MapEntry(
+              key,
+              (value as List)
+                  .map<Map<String, dynamic>>(
+                    (item) => {
+                      "title": item["title"],
+                      "isDone": item["isDone"],
+                    },
+                  )
+                  .toList(),
+            ),
+          );
+        });
+      } catch (e2) {
+        print("File is corrupted : $e2");
+        allWeeklyTasks = {};
+      }
     }
   }
 
@@ -119,6 +164,8 @@ class _WeeklyTaskState extends State<WeeklyTask> {
   @override
   void initState() {
     super.initState();
+    key = encrypt.Key.fromUtf8('my 32 length key................');
+    encrypter = encrypt.Encrypter(encrypt.AES(key));
     initFile();
   }
 

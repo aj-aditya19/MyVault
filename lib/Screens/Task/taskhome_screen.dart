@@ -64,7 +64,7 @@ class _TaskhomeState extends State<Taskhome> {
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: [Icon(Icons.lock_clock_outlined), Text("Weekly")],
+                    children: [Text("Weekly")],
                   ),
                 ),
               ),

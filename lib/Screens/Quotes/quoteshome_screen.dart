@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
 
 class Quoteshome extends StatefulWidget {
   const Quoteshome({super.key});
@@ -13,8 +14,25 @@ class Quoteshome extends StatefulWidget {
 class _QuoteshomeState extends State<Quoteshome> {
   final TextEditingController controller = TextEditingController();
   List<String> quotesList = [];
-
   late File quotesFile;
+
+  late final encrypt.Key key;
+  late final encrypt.Encrypter encrypter;
+
+  String encryptData(String data) {
+    final iv = encrypt.IV.fromSecureRandom(16);
+    final encrypted = encrypter.encrypt(data, iv: iv);
+    final combined = iv.bytes + encrypted.bytes;
+    return base64Encode(combined);
+  }
+
+  String decrypt(String base64Data) {
+    final combined = base64Decode(base64Data);
+    final iv = encrypt.IV(combined.sublist(0, 16));
+    final encryptedBytes = combined.sublist(16);
+    final encrypted = encrypt.Encrypted(encryptedBytes);
+    return encrypter.decrypt(encrypted, iv: iv);
+  }
 
   Future<void> inifile() async {
     final dir = await getApplicationDocumentsDirectory();
@@ -22,26 +40,46 @@ class _QuoteshomeState extends State<Quoteshome> {
 
     if (!await quotesFile.exists()) {
       await quotesFile.create();
-      await quotesFile.writeAsString(jsonEncode([]));
+      await quotesFile.writeAsString(encryptData(jsonEncode([])));
     }
 
     String content = await quotesFile.readAsString();
 
-    if (content.isNotEmpty) {
-      List Decoded = jsonDecode(content);
+    if (content.isEmpty) return;
+    try {
+      final decrypted = decrypt(content);
+      List decodedData = jsonDecode(decrypted);
       setState(() {
-        quotesList = Decoded.map<String>((item) => item.toString()).toList();
+        quotesList = List<String>.from(decodedData);
       });
+    } catch (e) {
+      print("Data is not encrypted. Encrypting old data now....");
+      try {
+        List decodedData = jsonDecode(content);
+        String encrypted = encryptData(jsonEncode(decodedData));
+        await quotesFile.writeAsString(encrypted);
+
+        setState(() {
+          quotesList = List<String>.from(decodedData);
+        });
+      } catch (e2) {
+        print("File is corrupted : $e2");
+        quotesList = [];
+      }
     }
   }
 
   Future<void> saveQuotes() async {
-    await quotesFile.writeAsString(jsonEncode(quotesList));
+    final jsonString = jsonEncode(quotesList);
+    final encryptedData = encryptData(jsonString);
+    await quotesFile.writeAsString(encryptedData);
   }
 
   @override
   void initState() {
     super.initState();
+    key = encrypt.Key.fromUtf8('my 32 length key................');
+    encrypter = encrypt.Encrypter(encrypt.AES(key));
     inifile();
   }
 

@@ -1,7 +1,10 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
 
 class DailyTask extends StatefulWidget {
   const DailyTask({super.key});
@@ -15,6 +18,24 @@ class _DailyTaskState extends State<DailyTask> {
 
   Map<String, List<Map<String, dynamic>>> allTasks = {};
   late File taskFile;
+
+  late final encrypt.Key key;
+  late final encrypt.Encrypter encrypter;
+
+  String encryptData(String data) {
+    final iv = encrypt.IV.fromSecureRandom(16);
+    final encrypted = encrypter.encrypt(data, iv: iv);
+    final combined = iv.bytes + encrypted.bytes;
+    return base64Encode(combined);
+  }
+
+  String decrypt(String base64Data) {
+    final combined = base64Decode(base64Data);
+    final iv = encrypt.IV(combined.sublist(0, 16));
+    final encryptedBytes = combined.sublist(16);
+    final encrypted = encrypt.Encrypted(encryptedBytes);
+    return encrypter.decrypt(encrypted, iv: iv);
+  }
 
   String get today {
     final now = DateTime.now();
@@ -31,14 +52,16 @@ class _DailyTaskState extends State<DailyTask> {
 
     if (!await taskFile.exists()) {
       await taskFile.create();
-      await taskFile.writeAsString(jsonEncode({}));
+      await taskFile.writeAsString(encryptData(jsonEncode([])));
     }
 
     String content = await taskFile.readAsString();
 
-    if (content.isNotEmpty) {
-      Map decoded = jsonDecode(content);
-
+    if (content.isEmpty) return;
+    try {
+      final decrypted = decrypt(content);
+      Map<String, dynamic> decoded = jsonDecode(decrypted);
+      decoded = jsonDecode(decrypted);
       setState(() {
         allTasks = decoded.map<String, List<Map<String, dynamic>>>(
           (key, value) => MapEntry(
@@ -51,6 +74,32 @@ class _DailyTaskState extends State<DailyTask> {
           ),
         );
       });
+    } catch (e) {
+      print("Data is not encrypted. Encrypting old data now....");
+      try {
+        Map<String, dynamic> decoded = jsonDecode(content);
+        String encrypted = encryptData(jsonEncode(decoded));
+        await taskFile.writeAsString(encrypted);
+
+        setState(() {
+          allTasks = decoded.map<String, List<Map<String, dynamic>>>(
+            (key, value) => MapEntry(
+              key,
+              (value as List)
+                  .map<Map<String, dynamic>>(
+                    (item) => {
+                      "title": item["title"],
+                      "isDone": item["isDone"],
+                    },
+                  )
+                  .toList(),
+            ),
+          );
+        });
+      } catch (e2) {
+        print("File is corrupted : $e2");
+        allTasks = {};
+      }
     }
   }
 
@@ -61,6 +110,8 @@ class _DailyTaskState extends State<DailyTask> {
   @override
   void initState() {
     super.initState();
+    key = encrypt.Key.fromUtf8('my 32 length key................');
+    encrypter = encrypt.Encrypter(encrypt.AES(key));
     initFile();
   }
 

@@ -62,7 +62,7 @@ class _MoneyhomeState extends State<Moneyhome> {
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: [Icon(Icons.lock_clock_outlined), Text("Accounts")],
+                  children: [Text("Accounts")],
                 ),
               ),
             ),
