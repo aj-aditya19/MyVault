@@ -7,10 +7,10 @@ class Appbar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       title: const Text('MyVault'),
-      actions: [
-        IconButton(onPressed: () {}, icon: const Icon(Icons.notifications)),
-        IconButton(onPressed: () {}, icon: const Icon(Icons.alarm)),
-      ],
+      // actions: [
+      //   IconButton(onPressed: () {}, icon: const Icon(Icons.notifications)),
+      //   IconButton(onPressed: () {}, icon: const Icon(Icons.alarm)),
+      // ],
     );
   }
 

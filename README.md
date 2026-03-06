@@ -1,37 +1,149 @@
-<<<<<<< HEAD
+# MyVault
 
-# app
+MyVault is a personal productivity and management app built using **Flutter**.
+It helps users organize important parts of daily life like **accounts, tasks, projects, budgets, and personal values** in one place.
 
-A new Flutter project.
+This project was developed as a **personal learning and productivity tool**.
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter application.
+## App Banner
 
-A few resources to get you started if this is your first Flutter project:
+At the top of the README, the app displays a **background banner that contains the MyVault logo and the app name**.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+![MyVault Banner](images/background.png)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-=======
-I am currently working on MyVault, a personal growth and expense management application designed mainly for students. As of January, I am actively handling 4+ projects for hackathons and personal development while also learning Flutter. This project is currently 40% completed, with the remaining work focused on UI/UX design.
+---
 
-Completed Features
--Backend architecture and core logic
--Goal tracking (daily, weekly, monthly, yearly)
--Learning, rules, and quotes management
--Expense tracking logic
+# Features
 
-Remaining Work
--UI/UX design and screen implementation
--Final testing and polishing
--Local storage managine.
+### Dashboard
 
-I have not shared this project publicly yet because it is still in an early stage and requires proper UI/UX before release. On 18 February 2026, I will complete the remaining work and officially publish the project on GitHub, making it available for everyone.
+A central place to quickly navigate to some sections of the app.
 
-Thank you, I hope this project helps students stay organized and improve their personal growth and financial discipline.
+![Dashboard](images/DashBoard.png)
 
-> > > > > > > 344cbb34ff35f80cb685a419b800e1c0c1aef134
+---
+
+### Accounts
+
+Manage and view account-related information.
+
+![Accounts](images/Accounts.png)
+
+---
+
+### Daily Tasks
+
+Track and manage your daily tasks.
+
+![Daily Tasks](images/DailyTasks.png)
+
+---
+
+### Data Form
+
+The form in which the data is stored
+
+![Data Form](images/DataForm.png)
+
+---
+
+### Projects
+
+Create and manage different personal or work projects by adding tech stack and start/end date.
+
+![Projects](images/Projects.png)
+
+---
+
+### Values
+
+Store and track personal values or important metrics.
+
+![Values](images/Values.png)
+
+---
+
+### Weekly Budget
+
+Track your weekly budget and expenses.
+
+![Weekly Budget](images/WeeklyBudget.png)
+
+---
+
+# Built With
+
+- Flutter
+- Dart
+- Local File Storage (JSON)
+- Material UI
+- AES Encryption Method
+
+---
+
+# Installation
+
+1. Clone the repository
+
+```
+git clone https://github.com/aj-aditya19/MyVault.git
+```
+
+2. Go to the project directory
+
+```
+cd MyVault
+```
+
+3. Install dependencies
+
+```
+flutter pub get
+```
+
+4. Run the app
+
+```
+flutter run
+```
+
+---
+
+# APK Build
+
+To generate a release APK:
+
+```
+flutter build apk --release
+```
+
+APK will be generated in:
+
+```
+build/app/outputs/flutter-apk/app-release.apk
+```
+
+---
+
+# Future Improvements
+
+- PIN Lock for secure access to prevent some personal screens
+- UI improvements and Dark Mode
+- More featuers like AI, Day Conclusion, Monthly Tasks, Yearly Tasks
+
+---
+
+# Author
+
+Aditya Jaiswal
+
+GitHub:
+https://github.com/aj-aditya19
+
+---
+
+# License
+
+This project is open source and available under the **Mona-AJ**.

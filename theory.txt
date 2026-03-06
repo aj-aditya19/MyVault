@@ -25,26 +25,4 @@ Future plans -> Personal AI assistant - help them to achieve their goals
 	      Family or friends integration - can also connect with family members or friends
 
 Tech Stack-> Flutter - for app
-	     React.js - for web
 	     Local storage - helps to store data locally and work offline
-	     Node.js, Express.js - for backend
-
-Deadline ->  22-01-2026     
-Hours    ->  44 hours { as planned }
-Chances  ->  10%
-
-Plan - The plan that I believe that if I work according to the plane then i will make the project that i want to make as that was my aim.
-      ---------------------------------------------------------------------------------------------------------------------------------------------------
-      |   Date   |                    What to do                                                                | Time Needed  |    Work hours 		|
-      |--------------------------------------------------------------------------------------------------------------------------------------------------
-      | 16-01-26 | Start the project, UI/UX design ruff, note schema, make backend, or sign or login feature    |    5h	       |  1h-clg, 5-6, 9-12	| 
-      | 17-01-26 | A page or rules, learning, quotes, and schedule page                           		|    10h       |     Entire day		|
-      | 18-01-26 | money page in this day and task page will be completed 50% this day 				|    10h       |     Entire day		|
-      | 19-01-26 | complete the task page this day								|    5h	       |  1h-clg, 5-6, 9-12	|
-      | 20-01-26 | completed the entire app like local storage, notification system				|    5h	       |    2-6, 9-11		|
-      | 21-01-26 | fix bugs and host it										|    5h	       |  1h-clg, 5-6, 9-12	|
-      | 22-01-26 | documentation of this project and report of this project  					|    4h	       |   5-6, 9-12		|
-      ---------------------------------------------------------------------------------------------------------------------------------------------------
-
-Reality-
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
