@@ -1,3 +1,4 @@
+import 'package:app/Screens/Task/dailyhistory.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:io';
@@ -148,6 +149,15 @@ class _DailyTaskState extends State<DailyTask> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const Dailyhistory()),
+              );
+            },
+            child: Text("History"),
+          ),
           // 🔥 DATE HEADER
           Text(
             "Date: $today",

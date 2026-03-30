@@ -1,3 +1,4 @@
+import 'package:app/Screens/Money/moneyhistory.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:io';
@@ -19,13 +20,10 @@ class _WeeklyState extends State<Weekly> {
   List<Map<String, dynamic>> weeklySpending = [];
 
   late File weeklyFile;
-  late File accountFile;
 
   late encrypt.Key key;
   late encrypt.Encrypter encrypter;
 
-  DateTime? startDate;
-  DateTime? endDate;
   int weekNumber = 0;
 
   @override
@@ -33,7 +31,7 @@ class _WeeklyState extends State<Weekly> {
     super.initState();
     key = encrypt.Key.fromUtf8('my 32 length key................');
     encrypter = encrypt.Encrypter(encrypt.AES(key));
-    initFiles();
+    initFile();
   }
 
   String encryptData(String data) {
@@ -51,151 +49,98 @@ class _WeeklyState extends State<Weekly> {
     return encrypter.decrypt(encrypted, iv: iv);
   }
 
-  Map<String, dynamic> getCurrentWeekInfo() {
+  int getCurrentWeekNumber() {
     DateTime now = DateTime.now();
-    int diff = now.weekday - 4;
-    if (diff < 0) diff += 7;
-
-    DateTime startOfWeek = now.subtract(Duration(days: diff));
-    DateTime endOfWeek = startOfWeek.add(const Duration(days: 6));
-
     DateTime firstDayOfYear = DateTime(now.year, 1, 1);
-    int weekNum = ((startOfWeek.difference(firstDayOfYear).inDays) ~/ 7) + 1;
-
-    return {
-      "week_number": weekNum,
-      "start_date": startOfWeek,
-      "end_date": endOfWeek,
-    };
+    return ((now.difference(firstDayOfYear).inDays) ~/ 7) + 1;
   }
 
-  Future<void> addToSavingsSector(double amount) async {
-    if (!await accountFile.exists()) return;
-
-    String content = await accountFile.readAsString();
-    if (content.isEmpty) return;
-
-    final decrypted = decryptData(content);
-    Map<String, dynamic> data = jsonDecode(decrypted);
-
-    List transactions = data["transactions"];
-
-    int index = transactions.indexWhere((item) => item["sector"] == "Savings");
-
-    if (index == -1) {
-      // sector exist nahi karta
-      transactions.add({
-        "sector": "Savings",
-        "percent": 0,
-        "money_available": amount,
-      });
-    } else {
-      // sector exist karta hai
-      transactions[index]["money_available"] =
-          (transactions[index]["money_available"] ?? 0) + amount;
-    }
-
-    data["transactions"] = transactions;
-
-    String encrypted = encryptData(jsonEncode(data));
-    await accountFile.writeAsString(encrypted);
-  }
-
-  Future<void> initFiles() async {
+  Future<void> initFile() async {
     final dir = await getApplicationDocumentsDirectory();
     weeklyFile = File("${dir.path}/weekly_money.txt");
-    accountFile = File("${dir.path}/account_data.txt");
 
     if (!await weeklyFile.exists()) {
       await weeklyFile.create();
+      await weeklyFile.writeAsString(encryptData(jsonEncode([])));
     }
 
     await loadWeeklyData();
   }
 
   Future<void> loadWeeklyData() async {
-    final current = getCurrentWeekInfo();
+    weekNumber = getCurrentWeekNumber();
 
-    if (await weeklyFile.exists()) {
-      String content = await weeklyFile.readAsString();
+    String content = await weeklyFile.readAsString();
 
-      if (content.isNotEmpty) {
-        try {
-          final decrypted = decryptData(content);
-          Map<String, dynamic> data = jsonDecode(decrypted);
+    if (content.isEmpty) return;
 
-          startDate = DateTime.parse(data["start_date"]);
-          endDate = DateTime.parse(data["end_date"]);
-          weekNumber = data["week_number"];
+    try {
+      final decrypted = decryptData(content);
+      final List data = jsonDecode(decrypted);
 
-          weeklyBudget = (data["weekly_budget"] ?? 0).toDouble();
-          remainingWeekly = (data["remaining"] ?? 0).toDouble();
+      final currentWeek = data.firstWhere(
+        (w) => w["week_number"] == weekNumber,
+        orElse: () => null,
+      );
 
-          sectors = List<Map<String, dynamic>>.from(data["sectors"] ?? []);
-          weeklySpending = List<Map<String, dynamic>>.from(
-            data["spending"] ?? [],
-          );
+      if (currentWeek != null) {
+        weeklyBudget = (currentWeek["weekly_budget"] ?? 0).toDouble();
 
-          DateTime now = DateTime.now();
-          if (now.isAfter(endDate!) && now.weekday == DateTime.thursday) {
-            await handleWeekChange(current);
-          }
+        sectors = List<Map<String, dynamic>>.from(currentWeek["sectors"] ?? []);
 
-          setState(() {});
-          return;
-        } catch (_) {}
+        weeklySpending = List<Map<String, dynamic>>.from(
+          currentWeek["spending"] ?? [],
+        );
+
+        double spent = weeklySpending.fold(
+          0,
+          (sum, item) => sum + (item["amount"] ?? 0),
+        );
+
+        remainingWeekly = weeklyBudget - spent;
       }
+
+      setState(() {});
+    } catch (e) {
+      print("Load Error: $e");
     }
-
-    await handleWeekChange(current);
-  }
-
-  Future<void> handleWeekChange(Map<String, dynamic> current) async {
-    if (remainingWeekly > 0) {
-      await addToSavingsSector(remainingWeekly);
-    }
-
-    weeklyBudget = 0;
-    remainingWeekly = 0;
-    weeklySpending.clear();
-
-    startDate = current["start_date"];
-    endDate = current["end_date"];
-    weekNumber = current["week_number"];
-
-    await saveWeeklyData();
-    setState(() {});
   }
 
   Future<void> saveWeeklyData() async {
-    final data = {
+    List weeks = [];
+
+    String content = await weeklyFile.readAsString();
+
+    if (content.isNotEmpty) {
+      try {
+        final decrypted = decryptData(content);
+        final decoded = jsonDecode(decrypted);
+
+        if (decoded is List) {
+          weeks = decoded;
+        }
+      } catch (e) {
+        print("Decode Error: $e");
+      }
+    }
+
+    final newWeek = {
       "week_number": weekNumber,
-      "start_date": startDate?.toIso8601String(),
-      "end_date": endDate?.toIso8601String(),
       "weekly_budget": weeklyBudget,
-      "remaining": remainingWeekly,
       "sectors": sectors,
       "spending": weeklySpending,
     };
 
-    String encrypted = encryptData(jsonEncode(data));
+    int index = weeks.indexWhere((w) => w["week_number"] == weekNumber);
+
+    if (index != -1) {
+      weeks[index] = newWeek;
+    } else {
+      weeks.add(newWeek);
+    }
+
+    String encrypted = encryptData(jsonEncode(weeks));
     await weeklyFile.writeAsString(encrypted);
-  }
-
-  Future<void> addToAccount(double amount) async {
-    if (!await accountFile.exists()) return;
-
-    String content = await accountFile.readAsString();
-
-    if (content.isEmpty) return;
-
-    final decrypted = decryptData(content);
-    Map<String, dynamic> data = jsonDecode(decrypted);
-
-    data["balance"] += amount;
-
-    String encrypted = encryptData(jsonEncode(data));
-    await accountFile.writeAsString(encrypted);
   }
 
   void setWeeklyBudget() {
@@ -257,12 +202,12 @@ class _WeeklyState extends State<Weekly> {
               double amount = double.tryParse(amountController.text) ?? 0;
 
               setState(() {
-                remainingWeekly -= amount;
-
                 weeklySpending.add({
                   "desc": descController.text,
                   "amount": amount,
                 });
+
+                remainingWeekly -= amount;
               });
 
               saveWeeklyData();
@@ -273,6 +218,17 @@ class _WeeklyState extends State<Weekly> {
         ],
       ),
     );
+  }
+
+  void endWeek() async {
+    weekNumber = getCurrentWeekNumber() + 1;
+
+    weeklyBudget = 0;
+    remainingWeekly = 0;
+    weeklySpending.clear();
+
+    await saveWeeklyData();
+    setState(() {});
   }
 
   @override
@@ -317,6 +273,32 @@ class _WeeklyState extends State<Weekly> {
                 ),
               ),
             ),
+            SizedBox(height: 10),
+            Container(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Week $weekNumber",
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const Moneyhistory(),
+                        ),
+                      );
+                    },
+                    child: Text("History"),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 20),
             Expanded(
               child: ListView(
@@ -331,10 +313,7 @@ class _WeeklyState extends State<Weekly> {
                 }).toList(),
               ),
             ),
-            ElevatedButton(
-              onPressed: () => handleWeekChange(getCurrentWeekInfo()),
-              child: const Text("End Week"),
-            ),
+            ElevatedButton(onPressed: endWeek, child: const Text("End Week")),
           ],
         ),
       ),

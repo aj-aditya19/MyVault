@@ -1,3 +1,4 @@
+import 'package:app/Screens/Statistics/statisticshome_screen.dart';
 import 'package:flutter/material.dart';
 
 class Appbar extends StatelessWidget implements PreferredSizeWidget {
@@ -7,10 +8,19 @@ class Appbar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       title: const Text('MyVault'),
-      // actions: [
-      //   IconButton(onPressed: () {}, icon: const Icon(Icons.notifications)),
-      //   IconButton(onPressed: () {}, icon: const Icon(Icons.alarm)),
-      // ],
+      actions: [
+        IconButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const StatisticshomeScreen(),
+              ),
+            );
+          },
+          icon: const Icon(Icons.bar_chart),
+        ),
+      ],
     );
   }
 
