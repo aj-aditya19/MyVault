@@ -55,6 +55,31 @@ class _WeeklyState extends State<Weekly> {
     return ((now.difference(firstDayOfYear).inDays) ~/ 7) + 1;
   }
 
+  InputDecoration _dialogFieldDecoration(ColorScheme scheme, String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: scheme.onSurfaceVariant),
+      filled: true,
+      fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.92),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.7),
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.7),
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: scheme.primary, width: 1.5),
+      ),
+    );
+  }
+
   Future<void> initFile() async {
     final dir = await getApplicationDocumentsDirectory();
     weeklyFile = File("${dir.path}/weekly_money.txt");
@@ -148,29 +173,44 @@ class _WeeklyState extends State<Weekly> {
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Enter Weekly Budget"),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              double amount = double.tryParse(controller.text) ?? 0;
+      builder: (dialogContext) {
+        final scheme = Theme.of(dialogContext).colorScheme;
 
-              setState(() {
-                weeklyBudget = amount;
-                remainingWeekly = amount;
-              });
-
-              saveWeeklyData();
-              Navigator.pop(context);
-            },
-            child: const Text("Save"),
+        return AlertDialog(
+          backgroundColor: scheme.surface,
+          surfaceTintColor: scheme.surfaceTint,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-        ],
-      ),
+          title: Text(
+            "Enter Weekly Budget",
+            style: TextStyle(color: scheme.onSurface),
+          ),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            style: TextStyle(color: scheme.onSurface),
+            cursorColor: scheme.primary,
+            decoration: _dialogFieldDecoration(scheme, "Budget Amount"),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                double amount = double.tryParse(controller.text) ?? 0;
+
+                setState(() {
+                  weeklyBudget = amount;
+                  remainingWeekly = amount;
+                });
+
+                saveWeeklyData();
+                Navigator.pop(dialogContext);
+              },
+              child: const Text("Save"),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -180,43 +220,60 @@ class _WeeklyState extends State<Weekly> {
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Deduct Money"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: descController,
-              decoration: const InputDecoration(labelText: "Description"),
-            ),
-            TextField(
-              controller: amountController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: "Amount"),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              double amount = double.tryParse(amountController.text) ?? 0;
+      builder: (dialogContext) {
+        final scheme = Theme.of(dialogContext).colorScheme;
 
-              setState(() {
-                weeklySpending.add({
-                  "desc": descController.text,
-                  "amount": amount,
+        return AlertDialog(
+          backgroundColor: scheme.surface,
+          surfaceTintColor: scheme.surfaceTint,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            "Deduct Money",
+            style: TextStyle(color: scheme.onSurface),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: descController,
+                style: TextStyle(color: scheme.onSurface),
+                cursorColor: scheme.primary,
+                decoration: _dialogFieldDecoration(scheme, "Description"),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: amountController,
+                keyboardType: TextInputType.number,
+                style: TextStyle(color: scheme.onSurface),
+                cursorColor: scheme.primary,
+                decoration: _dialogFieldDecoration(scheme, "Amount"),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                double amount = double.tryParse(amountController.text) ?? 0;
+
+                setState(() {
+                  weeklySpending.add({
+                    "desc": descController.text,
+                    "amount": amount,
+                  });
+
+                  remainingWeekly -= amount;
                 });
 
-                remainingWeekly -= amount;
-              });
-
-              saveWeeklyData();
-              Navigator.pop(context);
-            },
-            child: const Text("Save"),
-          ),
-        ],
-      ),
+                saveWeeklyData();
+                Navigator.pop(dialogContext);
+              },
+              child: const Text("Save"),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -233,8 +290,10 @@ class _WeeklyState extends State<Weekly> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.green,
         onPressed: showDeductPopup,
@@ -280,9 +339,10 @@ class _WeeklyState extends State<Weekly> {
                 children: [
                   Text(
                     "Week $weekNumber",
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
+                      color: scheme.onSurface,
                     ),
                   ),
                   ElevatedButton(
@@ -301,17 +361,55 @@ class _WeeklyState extends State<Weekly> {
             ),
             const SizedBox(height: 20),
             Expanded(
-              child: ListView(
-                children: weeklySpending.map((item) {
-                  return ListTile(
-                    title: Text(item["desc"]),
-                    trailing: Text(
-                      "- ₹${item["amount"]}",
-                      style: const TextStyle(color: Colors.red),
+              child: weeklySpending.isEmpty
+                  ? Center(
+                      child: Text(
+                        "No spending recorded yet.",
+                        style: TextStyle(color: scheme.onSurfaceVariant),
+                      ),
+                    )
+                  : ListView.separated(
+                      itemCount: weeklySpending.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final item = weeklySpending[index];
+
+                        return Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: scheme.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: scheme.outlineVariant.withValues(
+                                alpha: 0.25,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  item["desc"],
+                                  style: TextStyle(
+                                    color: scheme.onSurface,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                "- ₹${item["amount"]}",
+                                style: const TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
-                  );
-                }).toList(),
-              ),
             ),
             ElevatedButton(onPressed: endWeek, child: const Text("End Week")),
           ],

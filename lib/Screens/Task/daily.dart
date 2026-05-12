@@ -1,4 +1,6 @@
 import 'package:app/Screens/Task/dailyhistory.dart';
+import 'package:app/Screens/Task/daily_checkin_screen.dart';
+import 'package:app/Screens/Task/constant_goals_screen.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:io';
@@ -145,18 +147,54 @@ class _DailyTaskState extends State<DailyTask> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const Dailyhistory()),
-              );
-            },
-            child: Text("History"),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const Dailyhistory(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.history_rounded),
+                label: const Text("History"),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DailyCheckinScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.monitor_heart_outlined),
+                label: const Text("Daily Check-in"),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ConstantGoalsScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.flag_circle_outlined),
+                label: const Text("Constant Goals"),
+              ),
+            ],
           ),
           // 🔥 DATE HEADER
           Text(
@@ -170,8 +208,11 @@ class _DailyTaskState extends State<DailyTask> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: Colors.grey.shade200,
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.65),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: 0.30),
+              ),
             ),
             child: Row(
               children: [
@@ -186,7 +227,7 @@ class _DailyTaskState extends State<DailyTask> {
                 ),
                 IconButton(
                   onPressed: addTask,
-                  icon: const Icon(Icons.add_circle, color: Colors.blue),
+                  icon: Icon(Icons.add_circle, color: scheme.primary),
                 ),
               ],
             ),
@@ -234,14 +275,21 @@ class TaskTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isDone ? Colors.green.shade100 : Colors.white,
+          color: isDone
+              ? Colors.green.withValues(alpha: 0.18)
+              : scheme.surface.withValues(alpha: 0.72),
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: 0.26),
+          ),
           boxShadow: const [
             BoxShadow(
               blurRadius: 4,
@@ -262,7 +310,7 @@ class TaskTile extends StatelessWidget {
                 title,
                 style: TextStyle(
                   fontSize: 16,
-                  color: isDone ? Colors.green : Colors.black,
+                  color: isDone ? Colors.green : scheme.onSurface,
                   decoration: isDone ? TextDecoration.lineThrough : null,
                 ),
               ),

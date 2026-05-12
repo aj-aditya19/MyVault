@@ -64,10 +64,12 @@ class _MoneyhistoryState extends State<Moneyhistory> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Money History"),
-        backgroundColor: const Color.fromARGB(255, 206, 203, 203),
+        backgroundColor: Colors.transparent,
       ),
       body: weeks.isEmpty
           ? const Center(child: Text("No Data Found"))
@@ -84,8 +86,13 @@ class _MoneyhistoryState extends State<Moneyhistory> {
                   margin: const EdgeInsets.only(bottom: 16),
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: scheme.surfaceContainerHighest.withValues(
+                      alpha: 0.72,
+                    ),
                     borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: scheme.outlineVariant.withValues(alpha: 0.28),
+                    ),
                     boxShadow: const [
                       BoxShadow(
                         blurRadius: 4,
@@ -116,7 +123,7 @@ class _MoneyhistoryState extends State<Moneyhistory> {
                               Text(item["desc"] ?? ""),
                               Text(
                                 "₹${item["amount"]}",
-                                style: const TextStyle(color: Colors.red),
+                                style: TextStyle(color: scheme.error),
                               ),
                             ],
                           ),

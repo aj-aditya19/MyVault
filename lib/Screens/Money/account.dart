@@ -376,6 +376,8 @@ class _AccountState extends State<Account> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: showGlobalDeductionDialog,
@@ -390,7 +392,11 @@ class _AccountState extends State<Account> {
               padding: EdgeInsets.all(20),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
-                color: Colors.lightBlueAccent,
+                gradient: LinearGradient(
+                  colors: [scheme.primary, scheme.tertiary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -444,10 +450,7 @@ class _AccountState extends State<Account> {
                     width: 120,
                     padding: EdgeInsets.all(5),
                     decoration: BoxDecoration(
-                      border: Border.all(
-                        width: 2,
-                        color: const Color.fromARGB(255, 124, 122, 122),
-                      ),
+                      border: Border.all(width: 2, color: scheme.outline),
                       borderRadius: BorderRadius.all(Radius.circular(20)),
                     ),
                     child: Row(
@@ -474,10 +477,7 @@ class _AccountState extends State<Account> {
                     width: 100,
                     padding: EdgeInsets.all(5),
                     decoration: BoxDecoration(
-                      border: Border.all(
-                        width: 2,
-                        color: const Color.fromARGB(255, 124, 122, 122),
-                      ),
+                      border: Border.all(width: 2, color: scheme.outline),
                       borderRadius: BorderRadius.all(Radius.circular(20)),
                     ),
 
@@ -503,8 +503,13 @@ class _AccountState extends State<Account> {
                     margin: EdgeInsets.only(bottom: 15),
                     padding: EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: scheme.surfaceContainerHighest.withValues(
+                        alpha: 0.72,
+                      ),
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: scheme.outlineVariant.withValues(alpha: 0.30),
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -519,10 +524,16 @@ class _AccountState extends State<Account> {
                                   style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.bold,
+                                    color: scheme.onSurface,
                                   ),
                                 ),
                                 SizedBox(width: 5),
-                                Text("${item["percent"]}%"),
+                                Text(
+                                  "${item["percent"]}%",
+                                  style: TextStyle(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
                               ],
                             ),
                             Column(
@@ -532,8 +543,8 @@ class _AccountState extends State<Account> {
                                   style: TextStyle(
                                     fontSize: 20,
                                     color: amount < 0
-                                        ? Colors.red
-                                        : Colors.blue,
+                                        ? scheme.error
+                                        : scheme.primary,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),

@@ -101,6 +101,7 @@ class _DailyhistoryState extends State<Dailyhistory> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final entries = dailyTasks.entries.toList();
     int total_days = entries.length;
     int total_days_pass = entries.where((entry) {
@@ -110,22 +111,32 @@ class _DailyhistoryState extends State<Dailyhistory> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Daily Tasks History"),
-        backgroundColor: const Color.fromARGB(255, 206, 203, 203),
+        backgroundColor: Colors.transparent,
       ),
       body: entries.isEmpty
           ? const Center(child: Text("No history available"))
           : Column(
               children: [
-                Padding(
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.fromLTRB(12, 12, 12, 8),
                   padding: const EdgeInsets.all(12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHighest.withValues(
+                      alpha: 0.65,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: scheme.outlineVariant.withValues(alpha: 0.28),
+                    ),
+                  ),
+                  child: Wrap(
+                    spacing: 10,
+                    runSpacing: 6,
+                    alignment: WrapAlignment.center,
                     children: [
                       Text("Total Days: $total_days"),
-                      SizedBox(width: 10),
-                      Text("Total Days Pass: $total_days_pass"),
-                      SizedBox(width: 10),
+                      Text("Passed: $total_days_pass"),
                       Text(
                         "Pass Rate: ${total_days > 0 ? ((total_days_pass / total_days) * 100).toStringAsFixed(2) : "0.00"}%",
                       ),
@@ -146,9 +157,13 @@ class _DailyhistoryState extends State<Dailyhistory> {
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
+                          color: scheme.surface.withValues(alpha: 0.72),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade300),
+                          border: Border.all(
+                            color: scheme.outlineVariant.withValues(
+                              alpha: 0.26,
+                            ),
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,7 +181,7 @@ class _DailyhistoryState extends State<Dailyhistory> {
                                 Text(
                                   pass ? "PASS" : "FAIL",
                                   style: TextStyle(
-                                    color: pass ? Colors.green : Colors.red,
+                                    color: pass ? Colors.green : scheme.error,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -182,11 +197,11 @@ class _DailyhistoryState extends State<Dailyhistory> {
                                   children: [
                                     Expanded(child: Text(task["title"])),
                                     Text(
-                                      task["isDone"] ? "true" : "false",
+                                      task["isDone"] ? "Done" : "Pending",
                                       style: TextStyle(
                                         color: task["isDone"]
                                             ? Colors.green
-                                            : Colors.red,
+                                            : scheme.error,
                                       ),
                                     ),
                                   ],

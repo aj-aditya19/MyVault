@@ -84,14 +84,20 @@ class _ValueshomeState extends State<Valueshome> {
   }
 
   void addValue() async {
-    final text = controller.text;
+    final text = controller.text.trim();
     if (text.isNotEmpty) {
       setState(() {
         valuesList.add(text);
         controller.clear();
       });
+      await saveValues();
     }
-    await saveValues();
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 
   void editValue(int index) {
@@ -132,10 +138,12 @@ class _ValueshomeState extends State<Valueshome> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Values"),
-        backgroundColor: const Color.fromARGB(255, 206, 203, 203),
+        backgroundColor: Colors.transparent,
       ),
 
       body: Padding(
@@ -171,23 +179,32 @@ class _ValueshomeState extends State<Valueshome> {
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
+                      color: scheme.surface.withValues(alpha: 0.72),
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: scheme.outlineVariant.withValues(alpha: 0.28),
+                      ),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          "${index + 1}-> ${valuesList[index]}",
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                        Expanded(
+                          child: Text(
+                            "${index + 1}-> ${valuesList[index]}",
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: scheme.onSurface,
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Row(
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.blue),
+                              icon: Icon(Icons.edit, color: scheme.primary),
                               onPressed: () {
                                 editValue(index);
                               },

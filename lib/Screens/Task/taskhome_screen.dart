@@ -1,3 +1,4 @@
+import 'package:app/Other/section_tabs.dart';
 import 'package:app/Screens/Task/daily.dart';
 import 'package:app/Screens/Task/monthly.dart';
 import 'package:app/Screens/Task/weekly.dart';
@@ -12,94 +13,47 @@ class Taskhome extends StatefulWidget {
 
 class _TaskhomeState extends State<Taskhome> {
   int selectedIndex = 0;
-  List<Widget> taskScreens = [DailyTask(), WeeklyTask(), MonthlyTask()];
+
+  late final List<Widget> taskScreens = const [
+    DailyTask(),
+    WeeklyTask(),
+    MonthlyTask(),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Padding(
+      padding: const EdgeInsets.all(8),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    selectedIndex = 0;
-                  });
-                },
-                child: Container(
-                  height: 60,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: selectedIndex == 0
-                            ? Colors.blue
-                            : Colors.transparent,
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  child: const Text("Daily"),
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    selectedIndex = 1;
-                  });
-                },
-                child: Container(
-                  height: 60,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: selectedIndex == 1
-                            ? Colors.blue
-                            : Colors.transparent,
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [Text("Weekly")],
-                  ),
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    selectedIndex = 2;
-                  });
-                },
-                child: Container(
-                  height: 60,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: selectedIndex == 2
-                            ? Colors.blue
-                            : Colors.transparent,
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.lock_clock_outlined),
-                      Text("Monthly"),
-                    ],
-                  ),
-                ),
-              ),
+          SectionTabs(
+            labels: const ["Daily", "Weekly", "Monthly"],
+            icons: const [
+              Icons.today_rounded,
+              Icons.calendar_view_week_rounded,
+              Icons.calendar_month_rounded,
             ],
+            selectedIndex: selectedIndex,
+            onChanged: (index) {
+              setState(() {
+                selectedIndex = index;
+              });
+            },
           ),
-          Divider(),
-          Expanded(child: taskScreens[selectedIndex]),
+          const SizedBox(height: 8),
+          const Divider(height: 1),
+          const SizedBox(height: 8),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 280),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeIn,
+              child: KeyedSubtree(
+                key: ValueKey(selectedIndex),
+                child: taskScreens[selectedIndex],
+              ),
+            ),
+          ),
         ],
       ),
     );

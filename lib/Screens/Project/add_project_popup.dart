@@ -14,38 +14,77 @@ class _AddProjectPopupState extends State<AddProjectPopup> {
   final startDateController = TextEditingController();
   final endDateController = TextEditingController();
 
+  InputDecoration _fieldDecoration(ColorScheme scheme, String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: scheme.onSurfaceVariant),
+      filled: true,
+      fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.92),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.7),
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.7),
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: scheme.primary, width: 1.5),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: const Text("Add New Project"),
+      backgroundColor: scheme.surface,
+      surfaceTintColor: scheme.surfaceTint,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Text("Add New Project", style: TextStyle(color: scheme.onSurface)),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
-              decoration: const InputDecoration(labelText: "Project Name"),
+              style: TextStyle(color: scheme.onSurface),
+              cursorColor: scheme.primary,
+              decoration: _fieldDecoration(scheme, "Project Name"),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: descController,
-              decoration: const InputDecoration(labelText: "Description"),
+              style: TextStyle(color: scheme.onSurface),
+              cursorColor: scheme.primary,
+              decoration: _fieldDecoration(scheme, "Description"),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: techController,
-              decoration: const InputDecoration(labelText: "Tech Stack"),
+              style: TextStyle(color: scheme.onSurface),
+              cursorColor: scheme.primary,
+              decoration: _fieldDecoration(scheme, "Tech Stack"),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: startDateController,
-              decoration: const InputDecoration(labelText: "Start Date"),
+              style: TextStyle(color: scheme.onSurface),
+              cursorColor: scheme.primary,
+              decoration: _fieldDecoration(scheme, "Start Date"),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: endDateController,
-              decoration: const InputDecoration(labelText: "End Date"),
+              style: TextStyle(color: scheme.onSurface),
+              cursorColor: scheme.primary,
+              decoration: _fieldDecoration(scheme, "End Date"),
             ),
           ],
         ),

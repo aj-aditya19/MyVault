@@ -2,10 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:app/Screens/Project/projecthome_screen.dart';
 import 'package:app/Screens/Quotes/quoteshome_screen.dart';
 import 'package:app/Screens/Values/valueshome_screen.dart';
+import 'package:app/Screens/Task/constant_goals_screen.dart';
+import 'package:app/Other/license_screen.dart';
 import 'package:app/Other/setting_screen.dart';
 
 class MyDrawer extends StatefulWidget {
-  const MyDrawer({super.key});
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode> onThemeModeChanged;
+
+  const MyDrawer({
+    super.key,
+    required this.themeMode,
+    required this.onThemeModeChanged,
+  });
 
   @override
   State<MyDrawer> createState() => _MyDrawerState();
@@ -14,60 +23,123 @@ class MyDrawer extends StatefulWidget {
 class _MyDrawerState extends State<MyDrawer> {
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
           DrawerHeader(
-            decoration: BoxDecoration(color: Colors.blue),
-            child: Text("Other Sectors"),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  scheme.primary.withValues(alpha: 0.95),
+                  scheme.tertiary.withValues(alpha: 0.95),
+                ],
+              ),
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  "Other Sectors",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  "Plan and track every area",
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ],
+            ),
           ),
           ListTile(
-            title: Text("Projects"),
+            title: const Text("Projects"),
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const Projecthome()),
               );
             },
-            leading: Icon(Icons.arrow_forward_ios_rounded),
+            leading: const Icon(Icons.folder_copy_outlined),
           ),
           ListTile(
-            title: Text("Quotes"),
+            title: const Text("Quotes"),
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const Quoteshome()),
               );
             },
-            leading: Icon(Icons.arrow_forward_ios_rounded),
+            leading: const Icon(Icons.format_quote_rounded),
           ),
           ListTile(
-            title: Text("Values"),
+            title: const Text("Values"),
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const Valueshome()),
               );
             },
-            leading: Icon(Icons.arrow_forward_ios_rounded),
+            leading: const Icon(Icons.workspace_premium_outlined),
           ),
-          SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-          Divider(),
           ListTile(
-            leading: Icon(Icons.settings),
-            title: Text("Settings"),
+            title: const Text("Constant Goals"),
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const SettingScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const ConstantGoalsScreen(),
+                ),
+              );
+            },
+            leading: const Icon(Icons.flag_circle_outlined),
+          ),
+          const SizedBox(height: 16),
+          SwitchListTile.adaptive(
+            secondary: Icon(
+              widget.themeMode == ThemeMode.dark
+                  ? Icons.dark_mode_rounded
+                  : Icons.light_mode_rounded,
+            ),
+            title: const Text("Dark Mode"),
+            value: widget.themeMode == ThemeMode.dark,
+            onChanged: (value) {
+              widget.onThemeModeChanged(
+                value ? ThemeMode.dark : ThemeMode.light,
+              );
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.settings),
+            title: const Text("Settings"),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SettingScreen(
+                    themeMode: widget.themeMode,
+                    onThemeModeChanged: widget.onThemeModeChanged,
+                  ),
+                ),
               );
             },
           ),
           ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text("Liceness"),
-            onTap: () {},
+            leading: const Icon(Icons.info_outline),
+            title: const Text("Licenses"),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const LicenseScreen()),
+              );
+            },
           ),
         ],
       ),

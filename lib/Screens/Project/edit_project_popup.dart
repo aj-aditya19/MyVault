@@ -10,33 +10,73 @@ Future<Map<String, String>?> editProjectPopup(
   final startController = TextEditingController(text: project["start_date"]);
   final endController = TextEditingController(text: project["end_date"]);
 
+  InputDecoration fieldDecoration(ColorScheme scheme, String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: scheme.onSurfaceVariant),
+      filled: true,
+      fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.92),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.7),
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(
+          color: scheme.outlineVariant.withValues(alpha: 0.7),
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: scheme.primary, width: 1.5),
+      ),
+    );
+  }
+
   return showDialog<Map<String, String>>(
     context: context,
     builder: (context) {
+      final scheme = Theme.of(context).colorScheme;
+
       return AlertDialog(
-        title: const Text("Edit Project"),
+        backgroundColor: scheme.surface,
+        surfaceTintColor: scheme.surfaceTint,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text("Edit Project", style: TextStyle(color: scheme.onSurface)),
         content: SingleChildScrollView(
           child: Column(
             children: [
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(labelText: "Name"),
+                style: TextStyle(color: scheme.onSurface),
+                cursorColor: scheme.primary,
+                decoration: fieldDecoration(scheme, "Name"),
               ),
               TextField(
                 controller: descController,
-                decoration: const InputDecoration(labelText: "Description"),
+                style: TextStyle(color: scheme.onSurface),
+                cursorColor: scheme.primary,
+                decoration: fieldDecoration(scheme, "Description"),
               ),
               TextField(
                 controller: techController,
-                decoration: const InputDecoration(labelText: "Tech"),
+                style: TextStyle(color: scheme.onSurface),
+                cursorColor: scheme.primary,
+                decoration: fieldDecoration(scheme, "Tech"),
               ),
               TextField(
                 controller: startController,
-                decoration: const InputDecoration(labelText: "Start Date"),
+                style: TextStyle(color: scheme.onSurface),
+                cursorColor: scheme.primary,
+                decoration: fieldDecoration(scheme, "Start Date"),
               ),
               TextField(
                 controller: endController,
-                decoration: const InputDecoration(labelText: "End Date"),
+                style: TextStyle(color: scheme.onSurface),
+                cursorColor: scheme.primary,
+                decoration: fieldDecoration(scheme, "End Date"),
               ),
             ],
           ),

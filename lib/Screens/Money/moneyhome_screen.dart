@@ -1,3 +1,4 @@
+import 'package:app/Other/section_tabs.dart';
 import 'package:app/Screens/Money/account.dart';
 import 'package:app/Screens/Money/weekly.dart';
 import 'package:flutter/material.dart';
@@ -11,66 +12,44 @@ class Moneyhome extends StatefulWidget {
 
 class _MoneyhomeState extends State<Moneyhome> {
   int selectedIndex = 0;
-  List<Widget> taskScreens = [Weekly(), Account()];
+
+  late final List<Widget> taskScreens = const [Weekly(), Account()];
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  selectedIndex = 0;
-                });
-              },
-              child: Container(
-                height: 60,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: selectedIndex == 0
-                          ? Colors.blue
-                          : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                child: const Text("Weekly"),
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        children: [
+          SectionTabs(
+            labels: const ["Weekly", "Accounts"],
+            icons: const [
+              Icons.insights_rounded,
+              Icons.account_balance_wallet_rounded,
+            ],
+            selectedIndex: selectedIndex,
+            onChanged: (index) {
+              setState(() {
+                selectedIndex = index;
+              });
+            },
+          ),
+          const SizedBox(height: 8),
+          const Divider(height: 1),
+          const SizedBox(height: 8),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 280),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeIn,
+              child: KeyedSubtree(
+                key: ValueKey(selectedIndex),
+                child: taskScreens[selectedIndex],
               ),
             ),
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  selectedIndex = 1;
-                });
-              },
-              child: Container(
-                height: 60,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: selectedIndex == 1
-                          ? Colors.blue
-                          : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [Text("Accounts")],
-                ),
-              ),
-            ),
-          ],
-        ),
-        Divider(),
-        Expanded(child: taskScreens[selectedIndex]),
-      ],
+          ),
+        ],
+      ),
     );
   }
 }

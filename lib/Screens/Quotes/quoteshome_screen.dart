@@ -84,14 +84,20 @@ class _QuoteshomeState extends State<Quoteshome> {
   }
 
   void addQuote() async {
-    final text = controller.text;
+    final text = controller.text.trim();
     if (text.isNotEmpty) {
       setState(() {
         quotesList.add(text);
         controller.clear();
       });
+      await saveQuotes();
     }
-    await saveQuotes();
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 
   void editQuote(int index) {
@@ -131,10 +137,12 @@ class _QuoteshomeState extends State<Quoteshome> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Quotes"),
-        backgroundColor: const Color.fromARGB(255, 206, 203, 203),
+        backgroundColor: Colors.transparent,
       ),
 
       body: Padding(
@@ -154,7 +162,10 @@ class _QuoteshomeState extends State<Quoteshome> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                ElevatedButton(onPressed: addQuote, child: Icon(Icons.add)),
+                ElevatedButton(
+                  onPressed: addQuote,
+                  child: const Icon(Icons.add),
+                ),
               ],
             ),
             const SizedBox(height: 20),
@@ -166,23 +177,32 @@ class _QuoteshomeState extends State<Quoteshome> {
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
+                      color: scheme.surface.withValues(alpha: 0.72),
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: scheme.outlineVariant.withValues(alpha: 0.28),
+                      ),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          quotesList[index],
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                        Expanded(
+                          child: Text(
+                            quotesList[index],
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 3,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: scheme.onSurface,
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Row(
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.blue),
+                              icon: Icon(Icons.edit, color: scheme.primary),
                               onPressed: () {
                                 editQuote(index);
                               },

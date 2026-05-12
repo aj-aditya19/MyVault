@@ -20,6 +20,33 @@ class _ProjecthomeState extends State<Projecthome> {
   late final encrypt.Key key;
   late final encrypt.Encrypter encrypter;
 
+  final List<Map<String, String>> starterProjects = const [
+    {
+      "name": "Vault Budget Tracker",
+      "desc":
+          "A clean finance dashboard for weekly limits, quick deductions, and history.",
+      "tech": "Flutter, Local Storage",
+      "start_date": "2026-05-01",
+      "end_date": "2026-05-18",
+    },
+    {
+      "name": "Study Sprint Planner",
+      "desc":
+          "A focused planning view with weekly goals, progress notes, and reminders.",
+      "tech": "Flutter, State Management",
+      "start_date": "2026-05-08",
+      "end_date": "2026-05-24",
+    },
+    {
+      "name": "Portfolio Notes Board",
+      "desc":
+          "An idea board for logging experiments, release ideas, and design references.",
+      "tech": "Flutter, Encryption",
+      "start_date": "2026-05-10",
+      "end_date": "2026-06-02",
+    },
+  ];
+
   String encryptData(String data) {
     final iv = encrypt.IV.fromSecureRandom(16);
     final encrypted = encrypter.encrypt(data, iv: iv);
@@ -60,11 +87,18 @@ class _ProjecthomeState extends State<Projecthome> {
       final decrypted = decryptData(content);
       List decodedData = jsonDecode(decrypted);
 
-      setState(() {
-        projects = decodedData
-            .map<Map<String, String>>((item) => Map<String, String>.from(item))
-            .toList();
-      });
+      final loadedProjects = decodedData
+          .map<Map<String, String>>((item) => Map<String, String>.from(item))
+          .toList();
+
+      if (loadedProjects.isEmpty) {
+        projects = List<Map<String, String>>.from(starterProjects);
+        await saveProjects();
+      } else {
+        projects = loadedProjects;
+      }
+
+      setState(() {});
     } catch (e) {
       print("Data is not encrypted. Encrypting old data now...");
 
@@ -73,16 +107,23 @@ class _ProjecthomeState extends State<Projecthome> {
         String encrypted = encryptData(jsonEncode(decodedData));
         await projectFile.writeAsString(encrypted);
 
-        setState(() {
-          projects = decodedData
-              .map<Map<String, String>>(
-                (item) => Map<String, String>.from(item),
-              )
-              .toList();
-        });
+        final loadedProjects = decodedData
+            .map<Map<String, String>>((item) => Map<String, String>.from(item))
+            .toList();
+
+        if (loadedProjects.isEmpty) {
+          projects = List<Map<String, String>>.from(starterProjects);
+          await saveProjects();
+        } else {
+          projects = loadedProjects;
+        }
+
+        setState(() {});
       } catch (e2) {
         print("File is corrupted: $e2");
-        projects = [];
+        projects = List<Map<String, String>>.from(starterProjects);
+        await saveProjects();
+        setState(() {});
       }
     }
   }
@@ -102,22 +143,22 @@ class _ProjecthomeState extends State<Projecthome> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Projects Home"),
-        backgroundColor: const Color.fromARGB(255, 206, 203, 203),
+        backgroundColor: Colors.transparent,
       ),
       body: Column(
         children: [
           Container(
-            margin: const EdgeInsets.only(top: 16),
-            width: 300,
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            width: double.infinity,
             decoration: BoxDecoration(
-              border: Border.all(
-                color: const Color.fromARGB(255, 99, 99, 99),
-                width: 1,
-              ),
-              borderRadius: BorderRadius.all(Radius.circular(20)),
+              border: Border.all(color: scheme.outline, width: 1),
+              borderRadius: const BorderRadius.all(Radius.circular(20)),
+              color: scheme.surface.withValues(alpha: 0.68),
             ),
             child: GestureDetector(
               onTap: () async {
@@ -132,99 +173,125 @@ class _ProjecthomeState extends State<Projecthome> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  Padding(padding: EdgeInsets.all(12)),
+                  const Padding(padding: EdgeInsets.all(12)),
                   Text(
                     "Add New project Idea",
                     style: TextStyle(
                       fontSize: 20,
-                      color: Color.fromARGB(255, 99, 99, 99),
+                      color: scheme.onSurfaceVariant,
                     ),
                   ),
-                  Icon(Icons.add),
+                  const Icon(Icons.add),
                 ],
               ),
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(10),
-              itemCount: projects.length,
-              itemBuilder: (context, index) {
-                final project = projects[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        width: 250,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+            child: projects.isEmpty
+                ? Center(
+                    child: Text(
+                      'No projects yet. Add your first idea.',
+                      style: TextStyle(color: scheme.onSurfaceVariant),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(10),
+                    itemCount: projects.length,
+                    itemBuilder: (context, index) {
+                      final project = projects[index];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: scheme.surface.withValues(alpha: 0.72),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: scheme.outlineVariant.withValues(
+                              alpha: 0.28,
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              project["name"]!,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    project["name"]!,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: scheme.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    project["desc"]!,
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    "Tech: ${project["tech"]!}",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    "${project["start_date"]!}-${project["end_date"]!}",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 6),
-                            Text(project["desc"]!),
-                            const SizedBox(height: 6),
-                            Text(
-                              "Tech: ${project["tech"]!}",
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              "${project["start_date"]!}-${project["end_date"]!}",
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
+                            const SizedBox(width: 8),
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: Icon(Icons.edit, color: scheme.primary),
+                                  onPressed: () async {
+                                    final updatedProject =
+                                        await editProjectPopup(
+                                          context,
+                                          projects[index],
+                                        );
+
+                                    if (updatedProject != null) {
+                                      setState(() {
+                                        projects[index] = updatedProject;
+                                      });
+                                      await saveProjects();
+                                    }
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () async {
+                                    setState(() {
+                                      projects.removeAt(index);
+                                    });
+                                    await saveProjects();
+                                  },
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blue),
-                            onPressed: () async {
-                              final updatedProject = await editProjectPopup(
-                                context,
-                                projects[index],
-                              );
-
-                              if (updatedProject != null) {
-                                setState(() {
-                                  projects[index] = updatedProject;
-                                });
-                                await saveProjects();
-                              }
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () async {
-                              setState(() {
-                                projects.removeAt(index);
-                              });
-                              await saveProjects();
-                            },
-                          ),
-                        ],
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),
