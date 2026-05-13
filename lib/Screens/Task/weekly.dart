@@ -162,6 +162,7 @@ class _WeeklyTaskState extends State<WeeklyTask> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -185,8 +186,11 @@ class _WeeklyTaskState extends State<WeeklyTask> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: Colors.grey.shade200,
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.65),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: 0.30),
+              ),
             ),
             child: Row(
               children: [

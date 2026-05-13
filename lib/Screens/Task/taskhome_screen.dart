@@ -1,6 +1,5 @@
 import 'package:app/Other/section_tabs.dart';
 import 'package:app/Screens/Task/daily.dart';
-import 'package:app/Screens/Task/monthly.dart';
 import 'package:app/Screens/Task/weekly.dart';
 import 'package:flutter/material.dart';
 
@@ -14,11 +13,7 @@ class Taskhome extends StatefulWidget {
 class _TaskhomeState extends State<Taskhome> {
   int selectedIndex = 0;
 
-  late final List<Widget> taskScreens = const [
-    DailyTask(),
-    WeeklyTask(),
-    MonthlyTask(),
-  ];
+  late final List<Widget> taskScreens = const [DailyTask(), WeeklyTask()];
 
   @override
   Widget build(BuildContext context) {
@@ -27,11 +22,10 @@ class _TaskhomeState extends State<Taskhome> {
       child: Column(
         children: [
           SectionTabs(
-            labels: const ["Daily", "Weekly", "Monthly"],
+            labels: const ["Daily", "Weekly"],
             icons: const [
               Icons.today_rounded,
               Icons.calendar_view_week_rounded,
-              Icons.calendar_month_rounded,
             ],
             selectedIndex: selectedIndex,
             onChanged: (index) {
@@ -40,9 +34,9 @@ class _TaskhomeState extends State<Taskhome> {
               });
             },
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           const Divider(height: 1),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Expanded(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 280),

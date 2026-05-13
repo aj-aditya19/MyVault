@@ -150,11 +150,11 @@ class _DailyTaskState extends State<DailyTask> {
     final scheme = Theme.of(context).colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(4),
       child: Column(
         children: [
           Wrap(
-            spacing: 8,
+            spacing: 14,
             runSpacing: 8,
             alignment: WrapAlignment.center,
             children: [
@@ -280,7 +280,7 @@ class TaskTile extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 7),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: isDone
