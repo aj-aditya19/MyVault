@@ -22,10 +22,11 @@ class _TaskhomeState extends State<Taskhome> {
       child: Column(
         children: [
           SectionTabs(
-            labels: const ["Daily", "Weekly"],
+            labels: const ["Daily", "Weekly", "Schedule"],
             icons: const [
               Icons.today_rounded,
               Icons.calendar_view_week_rounded,
+              Icons.table_view_rounded,
             ],
             selectedIndex: selectedIndex,
             onChanged: (index) {

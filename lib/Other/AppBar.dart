@@ -1,3 +1,4 @@
+import 'package:app/Screens/Schedule.dart/Schedule_homepage.dart';
 import 'package:app/Screens/Statistics/statisticshome_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -60,6 +61,15 @@ class Appbar extends StatelessWidget implements PreferredSizeWidget {
             );
           },
           icon: const Icon(Icons.bar_chart_rounded),
+        ),
+        IconButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ScheduleHomepage()),
+            );
+          },
+          icon: const Icon(Icons.calendar_month_rounded),
         ),
         const SizedBox(width: 6),
       ],
