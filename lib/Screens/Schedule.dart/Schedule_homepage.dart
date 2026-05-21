@@ -14,7 +14,7 @@ class ScheduleHomepage extends StatefulWidget {
 
 class _ScheduleHomepageState extends State<ScheduleHomepage> {
   static const List<String> _weekDays = [
-    'Thur',
+    'Thurs',
     'Fri',
     'Sat',
     'Sun',
@@ -28,7 +28,7 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
   static const int _slotMinutes = 20;
   static const double _pixelsPerMinute = 2;
   static const double _dayLabelWidth = 100;
-  static const double _laneHeight = 56;
+  static const double _laneHeight = 72;
 
   final Map<String, List<_ScheduleEntry>> _tasksByDay = {
     for (final day in _weekDays) day: [],
@@ -159,6 +159,44 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
     }
   }
 
+  int _weekdayForName(String name) {
+    switch (name) {
+      case 'Thurs':
+        return DateTime.thursday;
+      case 'Fri':
+        return DateTime.friday;
+      case 'Sat':
+        return DateTime.saturday;
+      case 'Sun':
+        return DateTime.sunday;
+      case 'Mon':
+        return DateTime.monday;
+      case 'Tues':
+        return DateTime.tuesday;
+      default:
+        return DateTime.wednesday;
+    }
+  }
+
+  DateTime _dateForDayName(String name) {
+    final today = DateTime.now();
+    final targetWeekday = _weekdayForName(name);
+    var delta = targetWeekday - today.weekday;
+    if (delta < 0) delta += 7;
+    final date = DateTime(
+      today.year,
+      today.month,
+      today.day,
+    ).add(Duration(days: delta));
+    return date;
+  }
+
+  String _formatDayShortDate(DateTime date) {
+    final d = date.day.toString().padLeft(2, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    return '$d/$m';
+  }
+
   int _parseTimeToMinute(String value) {
     final match = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(value.trim());
     if (match == null) {
@@ -177,6 +215,14 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
     final hour12 = hour % 12 == 0 ? 12 : hour % 12;
     final minuteText = minute.toString().padLeft(2, '0');
     return '$hour12:$minuteText $period';
+  }
+
+  String _formatTimeForInput(int minuteOfDay) {
+    final hour = (minuteOfDay ~/ 60) % 24;
+    final minute = minuteOfDay % 60;
+    final hourText = hour.toString().padLeft(2, '0');
+    final minuteText = minute.toString().padLeft(2, '0');
+    return '$hourText:$minuteText';
   }
 
   String _formatCompactTime(int minuteOfDay) {
@@ -301,6 +347,7 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
 
   void _openTaskDialog({String? day, _ScheduleEntry? existing}) {
     final targetDay = day ?? _selectedDay;
+    var dialogDay = targetDay;
 
     if (existing == null) {
       _editingTaskId = null;
@@ -311,12 +358,11 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
     } else {
       _editingTaskId = existing.id;
       _titleController.text = existing.title;
-      _startController.text = _formatMinute(existing.startMinute);
+      _startController.text = _formatTimeForInput(existing.startMinute);
       _durationController.text = existing.durationMinutes.toString();
       _isDone = existing.isDone;
+      dialogDay = existing != null ? day ?? _selectedDay : dialogDay;
     }
-
-    _selectedDay = targetDay;
 
     showDialog(
       context: context,
@@ -339,7 +385,7 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<String>(
-                      value: _selectedDay,
+                      value: dialogDay,
                       items: _weekDays
                           .map(
                             (dayName) => DropdownMenuItem(
@@ -353,7 +399,7 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
                           return;
                         }
                         setDialogState(() {
-                          _selectedDay = value;
+                          dialogDay = value;
                         });
                       },
                       decoration: const InputDecoration(labelText: 'Day'),
@@ -406,7 +452,7 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
                   TextButton(
                     onPressed: () async {
                       Navigator.pop(dialogContext);
-                      await _deleteTask(targetDay, existing.id);
+                      await _deleteTask(dialogDay, existing.id);
                     },
                     child: const Text('Delete'),
                   ),
@@ -417,7 +463,7 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
                 FilledButton(
                   onPressed: () async {
                     Navigator.pop(dialogContext);
-                    await _saveTask(day: targetDay);
+                    await _saveTask(day: dialogDay);
                   },
                   child: const Text('Save'),
                 ),
@@ -536,7 +582,15 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              // removed task count to keep UI simple
+              const SizedBox(height: 6),
+              Text(
+                _formatDayShortDate(_dateForDayName(day)),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),

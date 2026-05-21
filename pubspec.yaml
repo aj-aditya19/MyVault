@@ -45,8 +45,10 @@ dev_dependencies:
 
 flutter_launcher_icons:
   android: true
-  ios: false
-  image_path: "images/logo_myVault.png"
+  ios: true
+  image_path: "images/logo_MyVault.png"
+  min_sdk_android: 21
+  min_sdk_ios: 12
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

@@ -1,149 +1,183 @@
 # MyVault
 
-MyVault is a personal productivity and management app built using **Flutter**.
-It helps users organize important parts of daily life like **accounts, tasks, projects, budgets, and personal values** in one place.
+A private, local-first personal productivity system built with Flutter.
 
-This project was developed as a **personal learning and productivity tool**.
+Flutter: https://flutter.dev  
+Dart: https://dart.dev
 
----
+License: Mona-AJ  
+Platform: Android | Windows
 
-## App Banner
-
-At the top of the README, the app displays a **background banner that contains the MyVault logo and the app name**.
-
-![MyVault Banner](images/background.png)
+> Organize your accounts, tasks, schedules, projects, budgets, and personal values — all stored locally with AES encryption. No cloud. No tracking. Just you.
 
 ---
 
-# Features
+## Features
 
 ### Dashboard
 
-A central place to quickly navigate to some sections of the app.
+Central hub for navigating all modules of the app in one place.
 
-![Dashboard](images/DashBoard.png)
+### Schedule
 
----
+A structured weekly planning system to stay on top of your time.
+
+- Add tasks to specific days with start time and duration
+- Edit, delete, and mark tasks as completed
+
+### Statistics
+
+Visualize your productivity and study habits over time.
+
+- Total tracked days and study hours
+- Best performance day
+- Activity trends from saved data
 
 ### Accounts
 
-Manage and view account-related information.
-
-![Accounts](images/Accounts.png)
-
----
+Store and manage account-related information securely and locally.
 
 ### Daily Tasks
 
-Track and manage your daily tasks.
-
-![Daily Tasks](images/DailyTasks.png)
-
----
+Create, track, and complete your daily to-do list efficiently.
 
 ### Data Form
 
-The form in which the data is stored
-
-![Data Form](images/DataForm.png)
-
----
+Structured input forms for saving and organizing personal data.
 
 ### Projects
 
-Create and manage different personal or work projects by adding tech stack and start/end date.
+Plan and manage your personal or professional projects.
 
-![Projects](images/Projects.png)
-
----
+- Track tech stack, start/end dates, and progress
 
 ### Values
 
-Store and track personal values or important metrics.
-
-![Values](images/Values.png)
-
----
+Record and reflect on personal goals, habits, and principles.
 
 ### Weekly Budget
 
-Track your weekly budget and expenses.
-
-![Weekly Budget](images/WeeklyBudget.png)
+Log expenses and manage your weekly financial goals.
 
 ---
 
-# Built With
+## Privacy First
 
-- Flutter
-- Dart
-- Local File Storage (JSON)
-- Material UI
-- AES Encryption Method
+| Feature    | Detail                         |
+| ---------- | ------------------------------ |
+| Storage    | 100% local — no cloud, no sync |
+| Encryption | AES encryption on all data     |
+| Tracking   | None                           |
+| Internet   | Not required                   |
 
 ---
 
-# Installation
+## Tech Stack
 
-1. Clone the repository
+| Layer     | Technology       |
+| --------- | ---------------- |
+| Framework | Flutter          |
+| Language  | Dart             |
+| UI        | Material Design  |
+| Storage   | Local JSON files |
+| Security  | AES Encryption   |
 
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Flutter SDK (includes Dart)
+- Android Studio
+- VS Code (optional)
+
+```bash
+flutter doctor
 ```
+
+### Installation
+
+```bash
 git clone https://github.com/aj-aditya19/MyVault.git
-```
 
-2. Go to the project directory
-
-```
 cd MyVault
-```
 
-3. Install dependencies
-
-```
 flutter pub get
-```
 
-4. Run the app
-
-```
 flutter run
 ```
 
 ---
 
-# APK Build
+## Build Instructions
 
-To generate a release APK:
+### Android APK
 
-```
+```bash
 flutter build apk --release
 ```
 
-APK will be generated in:
-
-```
+Output:
 build/app/outputs/flutter-apk/app-release.apk
+
+### Windows Desktop
+
+```bash
+flutter config --enable-windows-desktop
+
+flutter build windows
 ```
 
----
-
-# Future Improvements
-
-- PIN Lock for secure access to prevent some personal screens
-- UI improvements and Dark Mode
-- More featuers like AI, Day Conclusion, Monthly Tasks, Yearly Tasks
+Output:
+build/windows/x64/runner/Release/app.exe
 
 ---
 
-# Author
+## Project Structure
 
-Aditya Jaiswal
-
-GitHub:
-https://github.com/aj-aditya19
+MyVault/
+├── android/
+├── ios/
+├── lib/
+├── windows/
+├── assets/
+├── pubspec.yaml
+└── README.md
 
 ---
 
-# License
+## Roadmap
 
-This project is open source and available under the **Mona-AJ**.
+- PIN lock / biometric authentication
+- Dark mode UI
+- Monthly and yearly scheduling views
+- Advanced analytics in Statistics module
+- AI-based productivity insights
+- Optional cloud sync
+
+---
+
+## Platform Support
+
+| Platform | Status         |
+| -------- | -------------- |
+| Android  | Supported      |
+| Windows  | Supported      |
+| iOS      | Not configured |
+| Web      | Not configured |
+
+---
+
+## Author
+
+Aditya Jaiswal  
+GitHub: https://github.com/aj-aditya19
+
+---
+
+## License
+
+Mona-AJ License
+
+Free for learning and personal use. Commercial use requires permission.
