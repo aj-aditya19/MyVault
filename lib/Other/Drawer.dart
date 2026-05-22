@@ -24,7 +24,7 @@ class _MyDrawerState extends State<MyDrawer> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-
+    var color = Colors.white;
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
@@ -38,14 +38,16 @@ class _MyDrawerState extends State<MyDrawer> {
                 ],
               ),
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Text(
                   "Other Sectors",
                   style: TextStyle(
-                    color: Colors.white,
+                    color: widget.themeMode == ThemeMode.dark
+                        ? Colors.black
+                        : Colors.white,
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
                   ),
@@ -53,7 +55,11 @@ class _MyDrawerState extends State<MyDrawer> {
                 SizedBox(height: 6),
                 Text(
                   "Plan and track every area",
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(
+                    color: widget.themeMode == ThemeMode.dark
+                        ? const Color.fromARGB(255, 25, 25, 25)
+                        : const Color.fromARGB(255, 211, 209, 209),
+                  ),
                 ),
               ],
             ),
@@ -115,6 +121,7 @@ class _MyDrawerState extends State<MyDrawer> {
               );
             },
           ),
+          SizedBox(height: 210),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.settings),

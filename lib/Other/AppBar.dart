@@ -13,23 +13,13 @@ class Appbar extends StatelessWidget implements PreferredSizeWidget {
   });
 
   ThemeMode _nextThemeMode() {
-    if (themeMode == ThemeMode.system) {
-      return ThemeMode.light;
-    }
-    if (themeMode == ThemeMode.light) {
-      return ThemeMode.dark;
-    }
-    return ThemeMode.system;
+    return themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
   }
 
   IconData _themeIcon() {
-    if (themeMode == ThemeMode.light) {
-      return Icons.light_mode_rounded;
-    }
-    if (themeMode == ThemeMode.dark) {
-      return Icons.dark_mode_rounded;
-    }
-    return Icons.brightness_auto_rounded;
+    return themeMode == ThemeMode.dark
+        ? Icons.light_mode_rounded
+        : Icons.dark_mode_rounded;
   }
 
   @override

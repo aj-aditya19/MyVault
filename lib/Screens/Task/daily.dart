@@ -148,14 +148,55 @@ class _DailyTaskState extends State<DailyTask> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final now = DateTime.now();
 
+    final dayNumber = now.difference(DateTime(now.year, 1, 1)).inDays + 1;
     return Padding(
       padding: const EdgeInsets.all(4),
       child: Column(
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text.rich(
+                TextSpan(
+                  children: [
+                    const TextSpan(
+                      text: "Day: ",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    TextSpan(
+                      text: "$dayNumber",
+                      style: const TextStyle(fontWeight: FontWeight.w400),
+                    ),
+                  ],
+                ),
+                style: const TextStyle(fontSize: 18),
+              ),
+
+              Text.rich(
+                TextSpan(
+                  children: [
+                    const TextSpan(
+                      text: "Date: ",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    TextSpan(
+                      text: today,
+                      style: const TextStyle(fontWeight: FontWeight.w400),
+                    ),
+                  ],
+                ),
+                style: const TextStyle(fontSize: 18),
+              ),
+            ],
+          ),
+
+          Divider(height: 20, thickness: 2),
+          SizedBox(height: 10),
           Wrap(
-            spacing: 14,
-            runSpacing: 8,
+            spacing: 10,
+            runSpacing: 6,
             alignment: WrapAlignment.center,
             children: [
               FilledButton.tonalIcon(
@@ -196,15 +237,7 @@ class _DailyTaskState extends State<DailyTask> {
               ),
             ],
           ),
-          // 🔥 DATE HEADER
-          Text(
-            "Date: $today",
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-
-          const SizedBox(height: 15),
-
-          // 🔹 Input
+          const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
@@ -233,11 +266,9 @@ class _DailyTaskState extends State<DailyTask> {
             ),
           ),
 
-          const SizedBox(height: 20),
-          const Divider(),
-          const SizedBox(height: 10),
-
-          // 🔹 Today's Tasks
+          SizedBox(height: 10),
+          Divider(height: 20, thickness: 2),
+          SizedBox(height: 10),
           Expanded(
             child: ListView.builder(
               itemCount: todayTasks.length,

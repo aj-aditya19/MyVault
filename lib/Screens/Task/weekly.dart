@@ -163,26 +163,83 @@ class _WeeklyTaskState extends State<WeeklyTask> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final now = DateTime.now();
+
+    final weekNumber =
+        ((now.difference(DateTime(now.year, 1, 1)).inDays) / 7).floor() + 1;
+
+    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+    final endOfWeek = startOfWeek.add(const Duration(days: 6));
+
+    String formatDate(DateTime date) {
+      return "${date.day}/${date.month}";
+    }
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const Weeklyhistory()),
-              );
-            },
-            child: Text("History"),
-          ),
-          Text(
-            currentWeekKey,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text.rich(
+                TextSpan(
+                  children: [
+                    const TextSpan(
+                      text: "Week: ",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    TextSpan(
+                      text: "$weekNumber",
+                      style: const TextStyle(fontWeight: FontWeight.w400),
+                    ),
+                  ],
+                ),
+                style: const TextStyle(fontSize: 18),
+              ),
+
+              Text.rich(
+                TextSpan(
+                  children: [
+                    const TextSpan(
+                      text: "Dates: ",
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    TextSpan(
+                      text:
+                          "${formatDate(startOfWeek)} - ${formatDate(endOfWeek)}",
+                      style: const TextStyle(fontWeight: FontWeight.w400),
+                    ),
+                  ],
+                ),
+                style: const TextStyle(fontSize: 18),
+              ),
+            ],
           ),
 
-          const SizedBox(height: 15),
+          Divider(height: 20, thickness: 2),
+          SizedBox(height: 10),
 
+          Wrap(
+            spacing: 10,
+            runSpacing: 6,
+            alignment: WrapAlignment.center,
+            children: [
+              FilledButton.tonalIcon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const Weeklyhistory(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.history_rounded),
+                label: const Text("History"),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
