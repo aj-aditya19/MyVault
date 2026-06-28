@@ -5,6 +5,9 @@ import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'package:app/core/models/schedule_category.dart';
+import 'package:app/core/services/notification_service.dart';
+
 class ScheduleHomepage extends StatefulWidget {
   const ScheduleHomepage({super.key});
 
@@ -23,8 +26,8 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
     'Wed',
   ];
 
-  static const int _startMinute = 4 * 60;
-  static const int _endMinute = 22 * 60;
+  static const int _startMinute = 0;
+  static const int _endMinute = 24 * 60;
   static const int _slotMinutes = 20;
   static const double _pixelsPerMinute = 2;
   static const double _dayLabelWidth = 100;
@@ -49,6 +52,11 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
   String _selectedDay = _weekDays.first;
   String? _editingTaskId;
   bool _isDone = false;
+  ScheduleCategory _category = ScheduleCategory.other;
+  bool _reminderEnabled = false;
+
+  String? _draggingTaskId;
+  double _dragDx = 0;
 
   int get _gridMinuteSpan => _endMinute - _startMinute;
   double get _gridWidth => _gridMinuteSpan * _pixelsPerMinute;
@@ -180,15 +188,40 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
 
   DateTime _dateForDayName(String name) {
     final today = DateTime.now();
-    final targetWeekday = _weekdayForName(name);
-    var delta = targetWeekday - today.weekday;
-    if (delta < 0) delta += 7;
-    final date = DateTime(
+    int diff = (today.weekday - DateTime.thursday) % 7;
+
+    final startOfWeek = DateTime(
       today.year,
       today.month,
       today.day,
-    ).add(Duration(days: delta));
-    return date;
+    ).subtract(Duration(days: diff));
+
+    final index = _weekDays.indexOf(name);
+
+    return startOfWeek.add(Duration(days: index));
+  }
+
+  Future<void> _syncReminder(String day, _ScheduleEntry entry) async {
+    await NotificationService.instance.cancel(entry.notificationId);
+    if (!entry.reminderEnabled || entry.isDone) return;
+
+    final dayDate = _dateForDayName(day);
+    var occursAt = DateTime(
+      dayDate.year,
+      dayDate.month,
+      dayDate.day,
+    ).add(Duration(minutes: entry.startMinute));
+
+    if (occursAt.isBefore(DateTime.now())) {
+      occursAt = occursAt.add(const Duration(days: 7));
+    }
+
+    await NotificationService.instance.scheduleAt(
+      id: entry.notificationId,
+      title: 'Schedule reminder',
+      body: entry.title,
+      when: occursAt,
+    );
   }
 
   String _formatDayShortDate(DateTime date) {
@@ -294,13 +327,45 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
       tasks[index] = tasks[index].copyWith(isDone: !tasks[index].isDone);
     });
     await _saveSchedule();
+    await _syncReminder(day, tasks[index]);
   }
 
   Future<void> _deleteTask(String day, String id) async {
     final tasks = _tasksByDay[day] ?? [];
+    final existing = tasks.firstWhere(
+      (entry) => entry.id == id,
+      orElse: () => _ScheduleEntry(
+        id: id,
+        title: '',
+        startMinute: 0,
+        durationMinutes: 0,
+        isDone: true,
+      ),
+    );
     tasks.removeWhere((entry) => entry.id == id);
     setState(() {});
     await _saveSchedule();
+    await NotificationService.instance.cancel(existing.notificationId);
+  }
+
+  Future<void> _rescheduleTask(String day, String id, int deltaMinutes) async {
+    if (deltaMinutes == 0) return;
+    final tasks = _tasksByDay[day] ?? [];
+    final index = tasks.indexWhere((entry) => entry.id == id);
+    if (index == -1) return;
+
+    final current = tasks[index];
+    final rawNewStart = current.startMinute + deltaMinutes;
+    final newStart = _snapToSlot(
+      rawNewStart.clamp(_startMinute, _endMinute - current.durationMinutes),
+    );
+
+    final updated = current.copyWith(startMinute: newStart);
+    setState(() {
+      tasks[index] = updated;
+    });
+    await _saveSchedule();
+    await _syncReminder(day, updated);
   }
 
   Future<void> _saveTask({String? day}) async {
@@ -321,6 +386,8 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
       startMinute: startMinute,
       durationMinutes: durationMinutes,
       isDone: _isDone,
+      category: _category,
+      reminderEnabled: _reminderEnabled,
     );
 
     setState(() {
@@ -340,9 +407,12 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
       _selectedDay = targetDay;
       _editingTaskId = null;
       _isDone = false;
+      _category = ScheduleCategory.other;
+      _reminderEnabled = false;
     });
 
     await _saveSchedule();
+    await _syncReminder(targetDay, entry);
   }
 
   void _openTaskDialog({String? day, _ScheduleEntry? existing}) {
@@ -355,12 +425,16 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
       _startController.text = '04:00';
       _durationController.text = '60';
       _isDone = false;
+      _category = ScheduleCategory.other;
+      _reminderEnabled = false;
     } else {
       _editingTaskId = existing.id;
       _titleController.text = existing.title;
       _startController.text = _formatTimeForInput(existing.startMinute);
       _durationController.text = existing.durationMinutes.toString();
       _isDone = existing.isDone;
+      _category = existing.category;
+      _reminderEnabled = existing.reminderEnabled;
       dialogDay = existing != null ? day ?? _selectedDay : dialogDay;
     }
 
@@ -433,6 +507,42 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
                       ],
                     ),
                     const SizedBox(height: 12),
+                    DropdownButtonFormField<ScheduleCategory>(
+                      value: _category,
+                      items: ScheduleCategory.values
+                          .map(
+                            (cat) => DropdownMenuItem(
+                              value: cat,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(cat.icon, size: 16, color: cat.color),
+                                  const SizedBox(width: 8),
+                                  Text(cat.label),
+                                ],
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setDialogState(() => _category = value);
+                      },
+                      decoration: const InputDecoration(labelText: 'Category'),
+                    ),
+                    const SizedBox(height: 8),
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: _reminderEnabled,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          _reminderEnabled = value ?? false;
+                        });
+                      },
+                      title: const Text('Remind me'),
+                      subtitle: const Text('Notify at the start time'),
+                      controlAffinity: ListTileControlAffinity.leading,
+                    ),
                     CheckboxListTile(
                       contentPadding: EdgeInsets.zero,
                       value: _isDone,
@@ -629,10 +739,13 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
               ...tasks.asMap().entries.map((entry) {
                 final task = entry.value;
                 final laneIndex = _laneIndexForTask(tasks, task);
+                final isDragging = _draggingTaskId == task.id;
                 final left =
-                    (task.startMinute - _startMinute) * _pixelsPerMinute;
+                    (task.startMinute - _startMinute) * _pixelsPerMinute +
+                    (isDragging ? _dragDx : 0);
                 final width = task.durationMinutes * _pixelsPerMinute;
                 final top = 6 + (laneIndex * _laneHeight);
+                final categoryColor = task.category.color;
 
                 return Positioned(
                   left: left,
@@ -641,23 +754,47 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
                   height: _laneHeight - 10,
                   child: GestureDetector(
                     onTap: () => _openTaskDialog(day: day, existing: task),
+                    onLongPressStart: (_) {
+                      setState(() {
+                        _draggingTaskId = task.id;
+                        _dragDx = 0;
+                      });
+                    },
+                    onLongPressMoveUpdate: (details) {
+                      setState(() {
+                        _dragDx = details.offsetFromOrigin.dx;
+                      });
+                    },
+                    onLongPressEnd: (_) async {
+                      final deltaMinutes = (_dragDx / _pixelsPerMinute).round();
+                      setState(() {
+                        _draggingTaskId = null;
+                        _dragDx = 0;
+                      });
+                      await _rescheduleTask(day, task.id, deltaMinutes);
+                    },
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: task.isDone
                             ? Colors.green.withValues(alpha: 0.22)
-                            : scheme.primary.withValues(alpha: 0.16),
+                            : categoryColor.withValues(
+                                alpha: isDragging ? 0.32 : 0.18,
+                              ),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                           color: task.isDone
                               ? Colors.green.withValues(alpha: 0.55)
-                              : scheme.primary.withValues(alpha: 0.35),
+                              : categoryColor.withValues(alpha: 0.55),
+                          width: isDragging ? 1.6 : 1.0,
                         ),
-                        boxShadow: const [
+                        boxShadow: [
                           BoxShadow(
-                            blurRadius: 6,
-                            offset: Offset(0, 2),
-                            color: Colors.black12,
+                            blurRadius: isDragging ? 10 : 6,
+                            offset: const Offset(0, 2),
+                            color: Colors.black.withValues(
+                              alpha: isDragging ? 0.22 : 0.12,
+                            ),
                           ),
                         ],
                       ),
@@ -667,6 +804,14 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              Icon(
+                                task.category.icon,
+                                size: 11,
+                                color: task.isDone
+                                    ? Colors.green.shade900
+                                    : categoryColor,
+                              ),
+                              const SizedBox(width: 3),
                               Expanded(
                                 child: Text(
                                   task.title,
@@ -681,6 +826,12 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
                                   ),
                                 ),
                               ),
+                              if (task.reminderEnabled)
+                                Icon(
+                                  Icons.alarm_rounded,
+                                  size: 11,
+                                  color: scheme.onSurfaceVariant,
+                                ),
                               GestureDetector(
                                 onTap: () => _toggleTaskDone(day, task.id),
                                 child: Icon(
@@ -760,8 +911,47 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
       ),
       body: Column(
         children: [
-          // header notes removed to keep UI simple
-          const SizedBox.shrink(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 6,
+              children: [
+                for (final category in ScheduleCategory.values)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 9,
+                        height: 9,
+                        decoration: BoxDecoration(
+                          color: category.color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        category.label,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Tip: long-press and drag a block to reschedule it',
+                style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+              ),
+            ),
+          ),
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -789,6 +979,8 @@ class _ScheduleEntry {
   final int startMinute;
   final int durationMinutes;
   final bool isDone;
+  final ScheduleCategory category;
+  final bool reminderEnabled;
 
   const _ScheduleEntry({
     required this.id,
@@ -796,7 +988,12 @@ class _ScheduleEntry {
     required this.startMinute,
     required this.durationMinutes,
     required this.isDone,
+    this.category = ScheduleCategory.other,
+    this.reminderEnabled = false,
   });
+
+  /// Stable small int derived from the id, used as the local notification id.
+  int get notificationId => id.hashCode & 0x7FFFFFFF;
 
   int get endMinute => startMinute + durationMinutes;
 
@@ -806,6 +1003,8 @@ class _ScheduleEntry {
     int? startMinute,
     int? durationMinutes,
     bool? isDone,
+    ScheduleCategory? category,
+    bool? reminderEnabled,
   }) {
     return _ScheduleEntry(
       id: id ?? this.id,
@@ -813,6 +1012,8 @@ class _ScheduleEntry {
       startMinute: startMinute ?? this.startMinute,
       durationMinutes: durationMinutes ?? this.durationMinutes,
       isDone: isDone ?? this.isDone,
+      category: category ?? this.category,
+      reminderEnabled: reminderEnabled ?? this.reminderEnabled,
     );
   }
 
@@ -822,6 +1023,8 @@ class _ScheduleEntry {
     'startMinute': startMinute,
     'durationMinutes': durationMinutes,
     'isDone': isDone,
+    'category': category.name,
+    'reminderEnabled': reminderEnabled,
   };
 
   factory _ScheduleEntry.fromJson(Map<String, dynamic> json) {
@@ -837,6 +1040,8 @@ class _ScheduleEntry {
           ? json['durationMinutes'] as int
           : int.tryParse(json['durationMinutes'].toString()) ?? 60,
       isDone: json['isDone'] == true,
+      category: ScheduleCategoryX.fromString(json['category'] as String?),
+      reminderEnabled: json['reminderEnabled'] == true,
     );
   }
 }

@@ -1,8 +1,6 @@
+import 'package:app/core/models/task_model.dart';
+import 'package:app/core/services/storage_service.dart';
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'package:encrypt/encrypt.dart' as encrypt;
 
 class Dailyhistory extends StatefulWidget {
   const Dailyhistory({super.key});
@@ -12,59 +10,41 @@ class Dailyhistory extends StatefulWidget {
 }
 
 class _DailyhistoryState extends State<Dailyhistory> {
-  Map<String, List<Map<String, dynamic>>> dailyTasks = {};
-
-  late File taskFile;
-  late encrypt.Key key;
-  late encrypt.Encrypter encrypter;
+  Map<String, List<TaskItem>> dailyTasks = {};
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    key = encrypt.Key.fromUtf8('my 32 length key................');
-    encrypter = encrypt.Encrypter(encrypt.AES(key));
     loadHistory();
   }
 
-  String decrypt(String base64Data) {
-    final combined = base64Decode(base64Data);
-    final iv = encrypt.IV(combined.sublist(0, 16));
-    final encryptedBytes = combined.sublist(16);
-    final encrypted = encrypt.Encrypted(encryptedBytes);
-    return encrypter.decrypt(encrypted, iv: iv);
-  }
-
   Future<void> loadHistory() async {
-    final dir = await getApplicationDocumentsDirectory();
-    taskFile = File('${dir.path}/tasks_file.txt');
+    final raw = await StorageService.readMap('tasks');
+    final parsed = <String, List<TaskItem>>{};
 
-    if (!await taskFile.exists()) return;
+    raw.forEach((dayKey, value) {
+      if (value is! List) return;
+      parsed[dayKey] = value
+          .whereType<Map>()
+          .map((e) {
+            final map = Map<String, dynamic>.from(e);
+            return map.containsKey('id')
+                ? TaskItem.fromJson(map)
+                : TaskItem.fromLegacy(map, dayKey, dayKey + map['title'].toString());
+          })
+          .toList();
+    });
 
-    try {
-      String content = await taskFile.readAsString();
-      final decrypted = decrypt(content);
-      final decoded = jsonDecode(decrypted);
-
-      setState(() {
-        dailyTasks = (decoded as Map<String, dynamic>).map(
-          (key, value) => MapEntry(
-            key,
-            (value as List)
-                .map<Map<String, dynamic>>(
-                  (e) => {"title": e["title"], "isDone": e["isDone"]},
-                )
-                .toList(),
-          ),
-        );
-      });
-    } catch (e) {
-      print("Error: $e");
-    }
+    setState(() {
+      dailyTasks = parsed;
+      _loading = false;
+    });
   }
 
-  bool isPass(List<Map<String, dynamic>> tasks) {
+  bool isPass(List<TaskItem> tasks) {
     if (tasks.isEmpty) return false;
-    return tasks.every((task) => task["isDone"] == true);
+    return tasks.every((task) => task.isDone);
   }
 
   String formatDate(String rawDate) {
@@ -77,20 +57,9 @@ class _DailyhistoryState extends State<Dailyhistory> {
       );
 
       const months = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
       ];
-
       const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
       return "${date.day} ${months[date.month - 1]} ${date.year} ${days[date.weekday - 1]}";
@@ -102,11 +71,15 @@ class _DailyhistoryState extends State<Dailyhistory> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final entries = dailyTasks.entries.toList();
-    int total_days = entries.length;
-    int total_days_pass = entries.where((entry) {
-      return isPass(entry.value);
-    }).length;
+
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final entries = dailyTasks.entries.toList()
+      ..sort((a, b) => b.key.compareTo(a.key));
+    int totalDays = entries.length;
+    int totalDaysPass = entries.where((entry) => isPass(entry.value)).length;
 
     return Scaffold(
       appBar: AppBar(
@@ -122,23 +95,19 @@ class _DailyhistoryState extends State<Dailyhistory> {
                   margin: const EdgeInsets.fromLTRB(12, 12, 12, 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest.withValues(
-                      alpha: 0.65,
-                    ),
+                    color: scheme.surfaceContainerHighest.withValues(alpha: 0.65),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: scheme.outlineVariant.withValues(alpha: 0.28),
-                    ),
+                    border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.28)),
                   ),
                   child: Wrap(
                     spacing: 10,
                     runSpacing: 6,
                     alignment: WrapAlignment.center,
                     children: [
-                      Text("Total Days: $total_days"),
-                      Text("Passed: $total_days_pass"),
+                      Text("Total Days: $totalDays"),
+                      Text("Passed: $totalDaysPass"),
                       Text(
-                        "Pass Rate: ${total_days > 0 ? ((total_days_pass / total_days) * 100).toStringAsFixed(2) : "0.00"}%",
+                        "Pass Rate: ${totalDays > 0 ? ((totalDaysPass / totalDays) * 100).toStringAsFixed(2) : "0.00"}%",
                       ),
                     ],
                   ),
@@ -159,11 +128,7 @@ class _DailyhistoryState extends State<Dailyhistory> {
                         decoration: BoxDecoration(
                           color: scheme.surface.withValues(alpha: 0.72),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: scheme.outlineVariant.withValues(
-                              alpha: 0.26,
-                            ),
-                          ),
+                          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.26)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,10 +138,7 @@ class _DailyhistoryState extends State<Dailyhistory> {
                               children: [
                                 Text(
                                   formatDate(date),
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                                 ),
                                 Text(
                                   pass ? "PASS" : "FAIL",
@@ -190,24 +152,29 @@ class _DailyhistoryState extends State<Dailyhistory> {
                             const Divider(),
                             ...tasks.map((task) {
                               return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 4,
-                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 4),
                                 child: Row(
                                   children: [
-                                    Expanded(child: Text(task["title"])),
+                                    Container(
+                                      width: 6,
+                                      height: 6,
+                                      margin: const EdgeInsets.only(right: 8),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: task.priority.color,
+                                      ),
+                                    ),
+                                    Expanded(child: Text(task.title)),
                                     Text(
-                                      task["isDone"] ? "Done" : "Pending",
+                                      task.isDone ? "Done" : "Pending",
                                       style: TextStyle(
-                                        color: task["isDone"]
-                                            ? Colors.green
-                                            : scheme.error,
+                                        color: task.isDone ? Colors.green : scheme.error,
                                       ),
                                     ),
                                   ],
                                 ),
                               );
-                            }).toList(),
+                            }),
                           ],
                         ),
                       );

@@ -1,9 +1,19 @@
 import 'package:app/Screens/home_screen.dart';
+import 'package:app/core/services/notification_service.dart';
+import 'package:app/core/services/pin_service.dart';
 import 'package:app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-void main() {
-  runApp(MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  NotificationService.instance.init();
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => PinService(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatefulWidget {

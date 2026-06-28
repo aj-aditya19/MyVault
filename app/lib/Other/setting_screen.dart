@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:app/Other/license_screen.dart';
+import 'package:app/core/services/notification_service.dart';
+import 'package:app/core/services/pin_service.dart';
+import 'package:app/core/widgets/pin_gate.dart';
 
 class SettingScreen extends StatefulWidget {
   final ThemeMode themeMode;
@@ -19,6 +23,85 @@ class _SettingScreenState extends State<SettingScreen> {
   bool notificationsEnabled = true;
   bool compactCards = false;
 
+  bool _hasPin = false;
+  bool _biometricEnabled = false;
+  bool _biometricAvailable = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSecurityState();
+  }
+
+  Future<void> _loadSecurityState() async {
+    final pinService = context.read<PinService>();
+    final hasPin = await pinService.hasPin();
+    final bioEnabled = await pinService.isBiometricEnabled();
+    final bioAvailable = await pinService.biometricAvailable();
+    if (!mounted) return;
+    setState(() {
+      _hasPin = hasPin;
+      _biometricEnabled = bioEnabled;
+      _biometricAvailable = bioAvailable;
+    });
+  }
+
+  Future<void> _changePin() async {
+    final pinService = context.read<PinService>();
+    if (_hasPin) {
+      final verified = await ensureSectionUnlocked(context, sectionName: 'Settings');
+      if (!verified) return;
+      // Force a fresh PIN setup even though already unlocked this session.
+      await pinService.removePin();
+    }
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const PinSetupScreen(sectionName: 'Money, Schedule & Projects'),
+        fullscreenDialog: true,
+      ),
+    );
+    _loadSecurityState();
+  }
+
+  Future<void> _removePin() async {
+    final verified = await ensureSectionUnlocked(context, sectionName: 'Settings');
+    if (!verified) return;
+    final pinService = context.read<PinService>();
+    await pinService.removePin();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('PIN removed. Locked sections are now open.')),
+    );
+    _loadSecurityState();
+  }
+
+  Future<void> _lockNow() async {
+    context.read<PinService>().lockNow();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Money, Schedule, and Projects are locked again.')),
+    );
+  }
+
+  Future<void> _toggleBiometric(bool value) async {
+    final pinService = context.read<PinService>();
+    await pinService.setBiometricEnabled(value);
+    setState(() => _biometricEnabled = value);
+  }
+
+  Future<void> _toggleNotifications(bool value) async {
+    setState(() => notificationsEnabled = value);
+    if (value) {
+      await NotificationService.instance.init();
+      await NotificationService.instance.scheduleDailySummary(
+        body: 'Check your tasks and schedule for today in MyVault.',
+      );
+    } else {
+      await NotificationService.instance.cancel(NotificationService.dailySummaryId);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -36,7 +119,6 @@ class _SettingScreenState extends State<SettingScreen> {
             ),
           ),
           const SizedBox(height: 8),
-
           Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
@@ -61,14 +143,10 @@ class _SettingScreenState extends State<SettingScreen> {
                 const Divider(height: 1),
                 SwitchListTile.adaptive(
                   secondary: const Icon(Icons.notifications),
-                  title: const Text("Notifications"),
-                  subtitle: const Text("Reminders and alerts"),
+                  title: const Text("Daily summary notification"),
+                  subtitle: const Text("A reminder every day at 8:00 AM"),
                   value: notificationsEnabled,
-                  onChanged: (value) {
-                    setState(() {
-                      notificationsEnabled = value;
-                    });
-                  },
+                  onChanged: _toggleNotifications,
                 ),
                 const Divider(height: 1),
                 SwitchListTile.adaptive(
@@ -108,15 +186,36 @@ class _SettingScreenState extends State<SettingScreen> {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.lock),
-                  title: const Text("Privacy"),
+                  leading: const Icon(Icons.pin_outlined),
+                  title: Text(_hasPin ? "Change PIN" : "Set up a PIN"),
+                  subtitle: const Text("Protects Money, Schedule & Projects"),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Privacy settings soon")),
-                    );
-                  },
+                  onTap: _changePin,
                 ),
+                if (_hasPin) ...[
+                  const Divider(height: 1),
+                  if (_biometricAvailable)
+                    SwitchListTile.adaptive(
+                      secondary: const Icon(Icons.fingerprint_rounded),
+                      title: const Text("Biometric unlock"),
+                      subtitle: const Text("Use fingerprint or face instead of the PIN"),
+                      value: _biometricEnabled,
+                      onChanged: _toggleBiometric,
+                    ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.lock_clock_outlined),
+                    title: const Text("Lock now"),
+                    subtitle: const Text("Re-lock Money, Schedule & Projects"),
+                    onTap: _lockNow,
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: Icon(Icons.lock_open_outlined, color: scheme.error),
+                    title: Text("Remove PIN", style: TextStyle(color: scheme.error)),
+                    onTap: _removePin,
+                  ),
+                ],
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.info),

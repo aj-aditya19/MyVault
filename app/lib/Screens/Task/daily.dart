@@ -1,11 +1,15 @@
-import 'package:app/Screens/Task/dailyhistory.dart';
-import 'package:app/Screens/Task/daily_checkin_screen.dart';
 import 'package:app/Screens/Task/constant_goals_screen.dart';
+import 'package:app/Screens/Task/daily_checkin_screen.dart';
+import 'package:app/Screens/Task/dailyhistory.dart';
+import 'package:app/Screens/Task/task_form_sheet.dart';
+import 'package:app/core/models/task_model.dart';
+import 'package:app/core/services/notification_service.dart';
+import 'package:app/core/services/storage_service.dart';
+import 'package:app/core/widgets/common_widgets.dart';
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:uuid/uuid.dart';
+
+enum _StatusFilter { all, pending, completed }
 
 class DailyTask extends StatefulWidget {
   const DailyTask({super.key});
@@ -15,142 +19,228 @@ class DailyTask extends StatefulWidget {
 }
 
 class _DailyTaskState extends State<DailyTask> {
-  final TextEditingController controller = TextEditingController();
+  static const _boxName = 'tasks';
+  static final _uuid = Uuid();
 
-  Map<String, List<Map<String, dynamic>>> allTasks = {};
-  late File taskFile;
+  Map<String, List<TaskItem>> _allTasks = {};
+  bool _loading = true;
 
-  late final encrypt.Key key;
-  late final encrypt.Encrypter encrypter;
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
+  TaskPriority? _priorityFilter;
+  _StatusFilter _statusFilter = _StatusFilter.all;
 
-  String encryptData(String data) {
-    final iv = encrypt.IV.fromSecureRandom(16);
-    final encrypted = encrypter.encrypt(data, iv: iv);
-    final combined = iv.bytes + encrypted.bytes;
-    return base64Encode(combined);
-  }
+  String get _todayKey => dayKeyFor(DateTime.now());
 
-  String decrypt(String base64Data) {
-    final combined = base64Decode(base64Data);
-    final iv = encrypt.IV(combined.sublist(0, 16));
-    final encryptedBytes = combined.sublist(16);
-    final encrypted = encrypt.Encrypted(encryptedBytes);
-    return encrypter.decrypt(encrypted, iv: iv);
-  }
-
-  String get today {
-    final now = DateTime.now();
-    return "${now.year}-${now.month}-${now.day}";
-  }
-
-  List<Map<String, dynamic>> get todayTasks {
-    return allTasks[today] ?? [];
-  }
-
-  Future<void> initFile() async {
-    final dir = await getApplicationDocumentsDirectory();
-    taskFile = File('${dir.path}/tasks_file.txt');
-
-    if (!await taskFile.exists()) {
-      await taskFile.create();
-      await taskFile.writeAsString(encryptData(jsonEncode([])));
-    }
-
-    String content = await taskFile.readAsString();
-
-    if (content.isEmpty) return;
-    try {
-      final decrypted = decrypt(content);
-      Map<String, dynamic> decoded = jsonDecode(decrypted);
-      decoded = jsonDecode(decrypted);
-      setState(() {
-        allTasks = decoded.map<String, List<Map<String, dynamic>>>(
-          (key, value) => MapEntry(
-            key,
-            (value as List)
-                .map<Map<String, dynamic>>(
-                  (item) => {"title": item["title"], "isDone": item["isDone"]},
-                )
-                .toList(),
-          ),
-        );
-      });
-    } catch (e) {
-      print("Data is not encrypted. Encrypting old data now....");
-      try {
-        Map<String, dynamic> decoded = jsonDecode(content);
-        String encrypted = encryptData(jsonEncode(decoded));
-        await taskFile.writeAsString(encrypted);
-
-        setState(() {
-          allTasks = decoded.map<String, List<Map<String, dynamic>>>(
-            (key, value) => MapEntry(
-              key,
-              (value as List)
-                  .map<Map<String, dynamic>>(
-                    (item) => {
-                      "title": item["title"],
-                      "isDone": item["isDone"],
-                    },
-                  )
-                  .toList(),
-            ),
-          );
-        });
-      } catch (e2) {
-        print("File is corrupted : $e2");
-        allTasks = {};
-      }
-    }
-  }
-
-  Future<void> saveTasks() async {
-    await taskFile.writeAsString(jsonEncode(allTasks));
-  }
+  List<TaskItem> get _todayTasks => _allTasks[_todayKey] ?? [];
 
   @override
   void initState() {
     super.initState();
-    key = encrypt.Key.fromUtf8('my 32 length key................');
-    encrypter = encrypt.Encrypter(encrypt.AES(key));
-    initFile();
+    _load();
   }
 
-  void addTask() async {
-    final text = controller.text.trim();
-    if (text.isEmpty) return;
-
-    setState(() {
-      allTasks.putIfAbsent(today, () => []);
-      allTasks[today]!.add({"title": text, "isDone": false});
-      controller.clear();
-    });
-
-    await saveTasks();
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
-  void toggleTask(int index) async {
-    setState(() {
-      allTasks[today]![index]["isDone"] = !allTasks[today]![index]["isDone"];
+  Future<void> _load() async {
+    final raw = await StorageService.readMap(_boxName);
+    final parsed = <String, List<TaskItem>>{};
+    bool needsMigrationSave = false;
+
+    raw.forEach((dayKey, value) {
+      if (value is! List) return;
+      final tasks = <TaskItem>[];
+      for (final item in value) {
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        if (map.containsKey('id')) {
+          tasks.add(TaskItem.fromJson(map));
+        } else {
+          // legacy entry from the old DailyTask screen - give it a stable id.
+          tasks.add(TaskItem.fromLegacy(map, dayKey, _uuid.v4()));
+          needsMigrationSave = true;
+        }
+      }
+      parsed[dayKey] = tasks;
     });
 
-    await saveTasks();
+    setState(() {
+      _allTasks = parsed;
+      _loading = false;
+    });
+
+    if (needsMigrationSave) await _persist();
   }
 
-  void deleteTask(int index) async {
+  Future<void> _persist() async {
+    final payload = <String, dynamic>{
+      for (final entry in _allTasks.entries)
+        entry.key: entry.value.map((t) => t.toJson()).toList(),
+    };
+    await StorageService.write(_boxName, payload);
+  }
+
+  Future<void> _syncReminder(TaskItem task) async {
+    await NotificationService.instance.cancel(task.notificationId);
+    if (!task.isDone && task.reminderAt != null) {
+      await NotificationService.instance.scheduleAt(
+        id: task.notificationId,
+        title: 'Task reminder',
+        body: task.title,
+        when: task.reminderAt!,
+      );
+    }
+  }
+
+  Future<void> _openTaskForm({TaskItem? existing}) async {
+    final result = await showTaskFormSheet(
+      context,
+      existing: existing,
+      dayKey: _todayKey,
+    );
+    if (result == null) return;
+
     setState(() {
-      allTasks[today]!.removeAt(index);
+      final list = List<TaskItem>.from(_allTasks[_todayKey] ?? []);
+      if (existing == null) {
+        list.add(result);
+      } else {
+        final index = list.indexWhere((t) => t.id == result.id);
+        if (index == -1) {
+          list.add(result);
+        } else {
+          list[index] = result;
+        }
+      }
+      _allTasks[_todayKey] = list;
     });
 
-    await saveTasks();
+    await _persist();
+    await _syncReminder(result);
+  }
+
+  Future<void> _toggleTask(TaskItem task) async {
+    final updated = task.copyWith(
+      isDone: !task.isDone,
+      completedAt: !task.isDone ? DateTime.now() : null,
+      clearCompletedAt: task.isDone,
+    );
+
+    setState(() {
+      final list = List<TaskItem>.from(_allTasks[_todayKey] ?? []);
+      final index = list.indexWhere((t) => t.id == task.id);
+      if (index != -1) list[index] = updated;
+      _allTasks[_todayKey] = list;
+    });
+
+    await _persist();
+    await _syncReminder(updated);
+  }
+
+  Future<void> _deleteTask(TaskItem task) async {
+    setState(() {
+      final list = List<TaskItem>.from(_allTasks[_todayKey] ?? []);
+      list.removeWhere((t) => t.id == task.id);
+      _allTasks[_todayKey] = list;
+    });
+    await _persist();
+    await NotificationService.instance.cancel(task.notificationId);
+  }
+
+  List<TaskItem> get _filteredTasks {
+    var tasks = List<TaskItem>.from(_todayTasks);
+
+    if (_query.trim().isNotEmpty) {
+      final q = _query.trim().toLowerCase();
+      tasks = tasks
+          .where(
+            (t) =>
+                t.title.toLowerCase().contains(q) ||
+                t.tags.any((tag) => tag.toLowerCase().contains(q)),
+          )
+          .toList();
+    }
+
+    if (_priorityFilter != null) {
+      tasks = tasks.where((t) => t.priority == _priorityFilter).toList();
+    }
+
+    switch (_statusFilter) {
+      case _StatusFilter.pending:
+        tasks = tasks.where((t) => !t.isDone).toList();
+      case _StatusFilter.completed:
+        tasks = tasks.where((t) => t.isDone).toList();
+      case _StatusFilter.all:
+        break;
+    }
+
+    tasks.sort((a, b) {
+      if (a.isDone != b.isDone) return a.isDone ? 1 : -1;
+      final priorityCompare = a.priority.index.compareTo(b.priority.index);
+      if (priorityCompare != 0) return priorityCompare;
+      return (a.dueDate ?? DateTime(2100)).compareTo(
+        b.dueDate ?? DateTime(2100),
+      );
+    });
+
+    return tasks;
+  }
+
+  ({int completed, int pending, double weeklyRate}) get _stats {
+    final today = _todayTasks;
+    final completed = today.where((t) => t.isDone).length;
+    final pending = today.length - completed;
+
+    int weeklyTotal = 0;
+    int weeklyDone = 0;
+    final now = DateTime.now();
+
+    _allTasks.forEach((key, tasks) {
+      final parts = key.split('-');
+      if (parts.length != 3) return;
+      final y = int.tryParse(parts[0]);
+      final m = int.tryParse(parts[1]);
+      final d = int.tryParse(parts[2]);
+      if (y == null || m == null || d == null) return;
+      final date = DateTime(y, m, d);
+      if (now.difference(date).inDays < 7 && !date.isAfter(now)) {
+        weeklyTotal += tasks.length;
+        weeklyDone += tasks.where((t) => t.isDone).length;
+      }
+    });
+
+    final rate = weeklyTotal == 0 ? 0.0 : (weeklyDone / weeklyTotal) * 100;
+    return (completed: completed, pending: pending, weeklyRate: rate);
+  }
+
+  String _dueLabel(DateTime due) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dueDay = DateTime(due.year, due.month, due.day);
+    final diff = dueDay.difference(today).inDays;
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Tomorrow';
+    if (diff < 0) return '${-diff}d overdue';
+    return '${due.day}/${due.month}';
   }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final now = DateTime.now();
-
     final dayNumber = now.difference(DateTime(now.year, 1, 1)).inDays + 1;
+
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final stats = _stats;
+    final filtered = _filteredTasks;
+
     return Padding(
       padding: const EdgeInsets.all(4),
       child: Column(
@@ -162,131 +252,183 @@ class _DailyTaskState extends State<DailyTask> {
                 TextSpan(
                   children: [
                     const TextSpan(
-                      text: "Day: ",
+                      text: 'Day: ',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    TextSpan(
-                      text: "$dayNumber",
-                      style: const TextStyle(fontWeight: FontWeight.w400),
-                    ),
-                    TextSpan(
-                      text: "/365",
-                      style: const TextStyle(fontWeight: FontWeight.w400),
-                    ),
+                    TextSpan(text: '$dayNumber/365'),
                   ],
                 ),
-                style: const TextStyle(fontSize: 18),
+                style: const TextStyle(fontSize: 16),
               ),
-
-              Text.rich(
-                TextSpan(
-                  children: [
-                    const TextSpan(
-                      text: "Date: ",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    TextSpan(
-                      text: today,
-                      style: const TextStyle(fontWeight: FontWeight.w400),
-                    ),
-                  ],
-                ),
-                style: const TextStyle(fontSize: 18),
+              FilledButton.icon(
+                onPressed: () => _openTaskForm(),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Add Task'),
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isDesktop = constraints.maxWidth > 900;
+              final isTablet = constraints.maxWidth > 600;
 
-          Divider(height: 20, thickness: 2),
-          SizedBox(height: 10),
+              return GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: isDesktop ? 3 : 3,
+                childAspectRatio: isDesktop ? 2.3 : 0.9,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                children: [
+                  StatCard(
+                    icon: Icons.check_circle_outline_rounded,
+                    value: '${stats.completed}',
+                    label: 'Completed today',
+                    color: Colors.green,
+                  ),
+                  StatCard(
+                    icon: Icons.pending_actions_rounded,
+                    value: '${stats.pending}',
+                    label: 'Pending',
+                    color: Colors.orange,
+                  ),
+                  StatCard(
+                    icon: Icons.percent_rounded,
+                    value: '${stats.weeklyRate.toStringAsFixed(0)}%',
+                    label: 'Weekly completion',
+                    color: Colors.purple,
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 20),
           Wrap(
-            spacing: 10,
+            spacing: 8,
             runSpacing: 6,
             alignment: WrapAlignment.center,
             children: [
               FilledButton.tonalIcon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const Dailyhistory(),
-                    ),
-                  );
-                },
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const Dailyhistory()),
+                ),
                 icon: const Icon(Icons.history_rounded),
-                label: const Text("History"),
+                label: const Text('History'),
               ),
               FilledButton.tonalIcon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const DailyCheckinScreen(),
-                    ),
-                  );
-                },
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DailyCheckinScreen(),
+                  ),
+                ),
                 icon: const Icon(Icons.monitor_heart_outlined),
-                label: const Text("Daily Check-in"),
-              ),
-              FilledButton.tonalIcon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ConstantGoalsScreen(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.flag_circle_outlined),
-                label: const Text("Constant Goals"),
+                label: const Text('Daily Check-in'),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest.withValues(alpha: 0.65),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: scheme.outlineVariant.withValues(alpha: 0.30),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _searchController,
+            onChanged: (value) => setState(() => _query = value),
+            decoration: InputDecoration(
+              hintText: 'Search tasks or tags...',
+              prefixIcon: const Icon(Icons.search_rounded),
+              filled: true,
+              fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
               ),
+              isDense: true,
             ),
-            child: Row(
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 36,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    decoration: const InputDecoration(
-                      hintText: "Enter today's task",
-                      border: InputBorder.none,
+                ChoiceChip(
+                  label: const Text('All'),
+                  selected: _statusFilter == _StatusFilter.all,
+                  onSelected: (_) =>
+                      setState(() => _statusFilter = _StatusFilter.all),
+                ),
+                const SizedBox(width: 6),
+                ChoiceChip(
+                  label: const Text('Pending'),
+                  selected: _statusFilter == _StatusFilter.pending,
+                  onSelected: (_) =>
+                      setState(() => _statusFilter = _StatusFilter.pending),
+                ),
+                const SizedBox(width: 6),
+                ChoiceChip(
+                  label: const Text('Completed'),
+                  selected: _statusFilter == _StatusFilter.completed,
+                  onSelected: (_) =>
+                      setState(() => _statusFilter = _StatusFilter.completed),
+                ),
+                const SizedBox(width: 12),
+                ...TaskPriority.values.map(
+                  (p) => Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      label: Text(p.label),
+                      avatar: CircleAvatar(backgroundColor: p.color, radius: 6),
+                      selected: _priorityFilter == p,
+                      onSelected: (selected) {
+                        setState(() => _priorityFilter = selected ? p : null);
+                      },
                     ),
                   ),
-                ),
-                IconButton(
-                  onPressed: addTask,
-                  icon: Icon(Icons.add_circle, color: scheme.primary),
                 ),
               ],
             ),
           ),
-
-          SizedBox(height: 10),
-          Divider(height: 20, thickness: 2),
-          SizedBox(height: 10),
+          const SizedBox(height: 8),
           Expanded(
-            child: ListView.builder(
-              itemCount: todayTasks.length,
-              itemBuilder: (context, index) {
-                final task = todayTasks[index];
-
-                return TaskTile(
-                  title: task["title"],
-                  isDone: task["isDone"],
-                  onTap: () => toggleTask(index),
-                  onDelete: () => deleteTask(index),
-                );
-              },
-            ),
+            child: filtered.isEmpty
+                ? Center(
+                    child: Text(
+                      _todayTasks.isEmpty
+                          ? 'No tasks yet today - tap "Add Task" to start.'
+                          : 'No tasks match your filters.',
+                      style: TextStyle(color: scheme.onSurfaceVariant),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      final task = filtered[index];
+                      return Dismissible(
+                        key: ValueKey(task.id),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          decoration: BoxDecoration(
+                            color: scheme.error.withValues(alpha: 0.85),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          margin: const EdgeInsets.only(bottom: 7),
+                          child: const Icon(Icons.delete, color: Colors.white),
+                        ),
+                        onDismissed: (_) => _deleteTask(task),
+                        child: _TaskTile(
+                          task: task,
+                          dueLabel: task.dueDate != null
+                              ? _dueLabel(task.dueDate!)
+                              : null,
+                          onToggle: () => _toggleTask(task),
+                          onTap: () => _openTaskForm(existing: task),
+                          onDelete: () => _deleteTask(task),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -294,16 +436,17 @@ class _DailyTaskState extends State<DailyTask> {
   }
 }
 
-class TaskTile extends StatelessWidget {
-  final String title;
-  final bool isDone;
+class _TaskTile extends StatelessWidget {
+  final TaskItem task;
+  final String? dueLabel;
+  final VoidCallback onToggle;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
-  const TaskTile({
-    super.key,
-    required this.title,
-    required this.isDone,
+  const _TaskTile({
+    required this.task,
+    required this.dueLabel,
+    required this.onToggle,
     required this.onTap,
     required this.onDelete,
   });
@@ -311,19 +454,23 @@ class TaskTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isOverdue =
+        dueLabel != null && dueLabel!.contains('overdue') && !task.isDone;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 7),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isDone
-              ? Colors.green.withValues(alpha: 0.18)
+          color: task.isDone
+              ? Colors.green.withValues(alpha: 0.14)
               : scheme.surface.withValues(alpha: 0.72),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: scheme.outlineVariant.withValues(alpha: 0.26),
+            color: task.isDone
+                ? Colors.green.withValues(alpha: 0.4)
+                : scheme.outlineVariant.withValues(alpha: 0.26),
           ),
           boxShadow: const [
             BoxShadow(
@@ -334,28 +481,137 @@ class TaskTile extends StatelessWidget {
           ],
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              isDone ? Icons.check_circle : Icons.radio_button_unchecked,
-              color: isDone ? Colors.green : Colors.grey,
+            Container(
+              width: 4,
+              height: 40,
+              margin: const EdgeInsets.only(right: 10, top: 2),
+              decoration: BoxDecoration(
+                color: task.priority.color,
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: isDone ? Colors.green : scheme.onSurface,
-                  decoration: isDone ? TextDecoration.lineThrough : null,
+            GestureDetector(
+              onTap: onToggle,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 2, right: 8),
+                child: Icon(
+                  task.isDone
+                      ? Icons.check_circle
+                      : Icons.radio_button_unchecked,
+                  color: task.isDone ? Colors.green : Colors.grey,
                 ),
+              ),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    task.title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: task.isDone
+                          ? Colors.green.shade800
+                          : scheme.onSurface,
+                      decoration: task.isDone
+                          ? TextDecoration.lineThrough
+                          : null,
+                    ),
+                  ),
+                  if (task.description.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        task.description,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  if (dueLabel != null ||
+                      task.tags.isNotEmpty ||
+                      task.reminderAt != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          if (dueLabel != null)
+                            _Badge(
+                              icon: Icons.event_rounded,
+                              label: dueLabel!,
+                              color: isOverdue ? scheme.error : scheme.primary,
+                            ),
+                          if (task.reminderAt != null)
+                            _Badge(
+                              icon: Icons.alarm_rounded,
+                              label: 'Reminder',
+                              color: Colors.amber.shade800,
+                            ),
+                          ...task.tags.map(
+                            (tag) => _Badge(
+                              icon: Icons.label_outline_rounded,
+                              label: tag,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
             ),
             IconButton(
               onPressed: onDelete,
-              icon: const Icon(Icons.delete, color: Colors.red),
+              icon: const Icon(
+                Icons.delete_outline,
+                color: Colors.red,
+                size: 20,
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _Badge({required this.icon, required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

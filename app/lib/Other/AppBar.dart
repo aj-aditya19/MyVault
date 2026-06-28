@@ -1,5 +1,6 @@
 import 'package:app/Screens/Schedule.dart/Schedule_homepage.dart';
 import 'package:app/Screens/Statistics/statisticshome_screen.dart';
+import 'package:app/core/widgets/pin_gate.dart';
 import 'package:flutter/material.dart';
 
 class Appbar extends StatelessWidget implements PreferredSizeWidget {
@@ -17,10 +18,18 @@ class Appbar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   IconData _themeIcon() {
-    print("Current ThemeMode: $themeMode");
     return themeMode == ThemeMode.dark
         ? Icons.light_mode_rounded
         : Icons.dark_mode_rounded;
+  }
+
+  Future<void> _openSchedule(BuildContext context) async {
+    final unlocked = await ensureSectionUnlocked(context, sectionName: 'Schedule');
+    if (!unlocked || !context.mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ScheduleHomepage()),
+    );
   }
 
   @override
@@ -43,6 +52,7 @@ class Appbar extends StatelessWidget implements PreferredSizeWidget {
           icon: Icon(_themeIcon()),
         ),
         IconButton(
+          tooltip: 'Statistics',
           onPressed: () {
             Navigator.push(
               context,
@@ -54,12 +64,8 @@ class Appbar extends StatelessWidget implements PreferredSizeWidget {
           icon: const Icon(Icons.bar_chart_rounded),
         ),
         IconButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const ScheduleHomepage()),
-            );
-          },
+          tooltip: 'Schedule (locked)',
+          onPressed: () => _openSchedule(context),
           icon: const Icon(Icons.calendar_month_rounded),
         ),
         const SizedBox(width: 6),

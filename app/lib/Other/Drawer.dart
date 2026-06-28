@@ -5,6 +5,7 @@ import 'package:app/Screens/Values/valueshome_screen.dart';
 import 'package:app/Screens/Task/constant_goals_screen.dart';
 import 'package:app/Other/license_screen.dart';
 import 'package:app/Other/setting_screen.dart';
+import 'package:app/core/widgets/pin_gate.dart';
 
 class MyDrawer extends StatefulWidget {
   final ThemeMode themeMode;
@@ -21,10 +22,18 @@ class MyDrawer extends StatefulWidget {
 }
 
 class _MyDrawerState extends State<MyDrawer> {
+  Future<void> _openProjects() async {
+    final unlocked = await ensureSectionUnlocked(context, sectionName: 'Projects');
+    if (!unlocked || !mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const Projecthome()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    print("Current theme in Drawer: ${widget.themeMode}");
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
@@ -66,13 +75,9 @@ class _MyDrawerState extends State<MyDrawer> {
           ),
           ListTile(
             title: const Text("Projects"),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const Projecthome()),
-              );
-            },
+            onTap: _openProjects,
             leading: const Icon(Icons.folder_copy_outlined),
+            trailing: Icon(Icons.lock_outline, size: 16, color: scheme.onSurfaceVariant),
           ),
           ListTile(
             title: const Text("Quotes"),
@@ -121,7 +126,6 @@ class _MyDrawerState extends State<MyDrawer> {
               );
             },
           ),
-          SizedBox(height: 210),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.settings),
