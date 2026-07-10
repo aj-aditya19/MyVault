@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../services/pin_service.dart';
 
-/// Call this before navigating into a locked section. Returns true if the
-/// section should be opened (either it was already unlocked this session,
-/// or the person just entered the right PIN / biometric / set up a new PIN).
 Future<bool> ensureSectionUnlocked(
   BuildContext context, {
   required String sectionName,
@@ -435,11 +431,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.shield_outlined,
-                    size: 42,
-                    color: scheme.primary,
-                  ),
+                  Icon(Icons.shield_outlined, size: 42, color: scheme.primary),
                   const SizedBox(height: 12),
                   Text(
                     _confirming

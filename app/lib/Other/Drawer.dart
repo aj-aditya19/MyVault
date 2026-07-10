@@ -23,7 +23,10 @@ class MyDrawer extends StatefulWidget {
 
 class _MyDrawerState extends State<MyDrawer> {
   Future<void> _openProjects() async {
-    final unlocked = await ensureSectionUnlocked(context, sectionName: 'Projects');
+    final unlocked = await ensureSectionUnlocked(
+      context,
+      sectionName: 'Projects',
+    );
     if (!unlocked || !mounted) return;
     Navigator.push(
       context,
@@ -77,7 +80,11 @@ class _MyDrawerState extends State<MyDrawer> {
             title: const Text("Projects"),
             onTap: _openProjects,
             leading: const Icon(Icons.folder_copy_outlined),
-            trailing: Icon(Icons.lock_outline, size: 16, color: scheme.onSurfaceVariant),
+            trailing: Icon(
+              Icons.lock_outline,
+              size: 16,
+              color: scheme.onSurfaceVariant,
+            ),
           ),
           ListTile(
             title: const Text("Quotes"),
@@ -110,6 +117,17 @@ class _MyDrawerState extends State<MyDrawer> {
               );
             },
             leading: const Icon(Icons.flag_circle_outlined),
+          ),
+          ListTile(
+            title: const Text("Constant Goals"),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ConstantGoalsScreen(),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 16),
           SwitchListTile.adaptive(

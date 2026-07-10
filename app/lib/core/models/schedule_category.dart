@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Category options for Weekly Schedule Planner time blocks.
 enum ScheduleCategory { study, project, personal, fitness, other }
 
 extension ScheduleCategoryX on ScheduleCategory {

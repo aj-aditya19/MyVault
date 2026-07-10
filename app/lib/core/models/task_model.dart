@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Priority levels for a task. Order matters (used for sorting).
 enum TaskPriority { high, medium, low }
 
 extension TaskPriorityX on TaskPriority {
@@ -125,13 +124,17 @@ class TaskItem {
     }
 
     return TaskItem(
-      id: json['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+      id:
+          json['id']?.toString() ??
+          DateTime.now().microsecondsSinceEpoch.toString(),
       title: json['title']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
       priority: TaskPriorityX.fromString(json['priority']?.toString()),
       dueDate: parseDate(json['dueDate']),
       reminderAt: parseDate(json['reminderAt']),
-      tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      tags:
+          (json['tags'] as List?)?.map((e) => e.toString()).toList() ??
+          const [],
       isDone: json['isDone'] == true,
       createdAt: parseDate(json['createdAt']) ?? DateTime.now(),
       completedAt: parseDate(json['completedAt']),
@@ -141,7 +144,11 @@ class TaskItem {
 
   /// Builds a [TaskItem] from the legacy `{"title": ..., "isDone": ...}`
   /// shape used by the original app so old saved data keeps working.
-  factory TaskItem.fromLegacy(Map<String, dynamic> json, String dayKey, String id) {
+  factory TaskItem.fromLegacy(
+    Map<String, dynamic> json,
+    String dayKey,
+    String id,
+  ) {
     return TaskItem(
       id: id,
       title: json['title']?.toString() ?? '',

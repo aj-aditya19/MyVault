@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// The three layout classes MyVault adapts to.
 enum DeviceType { mobile, tablet, desktop }
 
-/// Centralized breakpoints + helpers so every screen agrees on what counts
-/// as mobile / tablet / desktop, instead of each widget guessing its own
-/// width cutoffs.
 class Responsive {
   Responsive._();
 
@@ -28,7 +24,6 @@ class Responsive {
   static bool isDesktop(BuildContext context) =>
       deviceTypeOf(context) == DeviceType.desktop;
 
-  /// How many columns a stat/quick-action grid should use at this width.
   static int gridColumns(BuildContext context) {
     switch (deviceTypeOf(context)) {
       case DeviceType.mobile:
@@ -40,8 +35,6 @@ class Responsive {
     }
   }
 
-  /// Caps how wide page content grows on very large / desktop screens so
-  /// text and cards don't stretch edge-to-edge forever.
   static double maxContentWidth(BuildContext context) {
     switch (deviceTypeOf(context)) {
       case DeviceType.mobile:
@@ -53,15 +46,10 @@ class Responsive {
     }
   }
 
-  /// Whether the primary navigation should render as a side rail instead
-  /// of a bottom bar.
   static bool useSideNav(BuildContext context) =>
       deviceTypeOf(context) != DeviceType.mobile;
 }
 
-/// Wraps [child] in a centered, width-capped container - drop this around
-/// any screen body to make it behave well on tablet/desktop without
-/// touching the screen's internal layout code.
 class ResponsiveContent extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;

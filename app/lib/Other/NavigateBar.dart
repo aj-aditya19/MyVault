@@ -1,12 +1,7 @@
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
-
 import 'package:app/core/utils/responsive.dart';
 
-/// Describes one primary navigation destination (Dashboard, Tasks, Study,
-/// Money...). [locked] just draws a small lock badge - the actual PIN check
-/// happens wherever onTap is handled.
 class NavItemData {
   final IconData icon;
   final String label;
@@ -19,9 +14,6 @@ class NavItemData {
   });
 }
 
-/// Adaptive primary navigation. Renders as a floating bottom bar on phones
-/// and as a side [NavigationRail] on tablet/desktop, so the same screen
-/// works across all of MyVault's target platforms.
 class Navigatebar extends StatelessWidget {
   final int currentIndex;
   final List<NavItemData> items;

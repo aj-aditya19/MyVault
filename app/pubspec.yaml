@@ -42,14 +42,17 @@ dependencies:
   uuid: ^4.5.1 # unique ids for tasks / schedule entries / study sessions
   intl: ^0.19.0 # date formatting across new screens
 
-  flutter_local_notifications: ^17.2.3 # task / schedule reminders + daily summary
-  timezone: ^0.9.4 # required by flutter_local_notifications for zonedSchedule
-  flutter_timezone: ^4.1.1
+  flutter_local_notifications: ^22.0.1
+  timezone: ^0.11.1
+  flutter_timezone: ^5.0.0
+  # firebase_core: ^4.0.0
+  # firebase_messaging: ^16.0.0
 
   local_auth: ^2.3.0 # biometric unlock for locked sections
   flutter_secure_storage: ^9.2.2 # stores PIN hash + lock settings securely
 
   fl_chart: ^0.69.0 # Study Tracker line chart + weekly bars
+  local_notifier: ^0.1.6
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1

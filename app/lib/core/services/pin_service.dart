@@ -2,13 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 
-/// Guards the sensitive sections of the app (Money, Schedule, Projects)
-/// behind a single shared PIN, with optional biometric unlock.
-///
-/// Unlocking is a *session* concept: once the correct PIN/biometric is
-/// given, [isUnlocked] stays true until the app process is killed, so the
-/// person isn't asked again every time they switch tabs. [lockNow] is
-/// exposed for a manual "Lock now" action in Settings.
 class PinService extends ChangeNotifier {
   static const _pinKey = 'myvault_pin_v1';
   static const _biometricKey = 'myvault_biometric_enabled_v1';
@@ -87,7 +80,6 @@ class PinService extends ChangeNotifier {
     }
   }
 
-  /// Re-locks all gated sections for the rest of this session.
   void lockNow() {
     _isUnlocked = false;
     notifyListeners();

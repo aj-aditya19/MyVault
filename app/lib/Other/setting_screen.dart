@@ -49,16 +49,19 @@ class _SettingScreenState extends State<SettingScreen> {
   Future<void> _changePin() async {
     final pinService = context.read<PinService>();
     if (_hasPin) {
-      final verified = await ensureSectionUnlocked(context, sectionName: 'Settings');
+      final verified = await ensureSectionUnlocked(
+        context,
+        sectionName: 'Settings',
+      );
       if (!verified) return;
-      // Force a fresh PIN setup even though already unlocked this session.
       await pinService.removePin();
     }
     if (!mounted) return;
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => const PinSetupScreen(sectionName: 'Money, Schedule & Projects'),
+        builder: (_) =>
+            const PinSetupScreen(sectionName: 'Money, Schedule & Projects'),
         fullscreenDialog: true,
       ),
     );
@@ -66,13 +69,18 @@ class _SettingScreenState extends State<SettingScreen> {
   }
 
   Future<void> _removePin() async {
-    final verified = await ensureSectionUnlocked(context, sectionName: 'Settings');
+    final verified = await ensureSectionUnlocked(
+      context,
+      sectionName: 'Settings',
+    );
     if (!verified) return;
     final pinService = context.read<PinService>();
     await pinService.removePin();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('PIN removed. Locked sections are now open.')),
+      const SnackBar(
+        content: Text('PIN removed. Locked sections are now open.'),
+      ),
     );
     _loadSecurityState();
   }
@@ -80,7 +88,9 @@ class _SettingScreenState extends State<SettingScreen> {
   Future<void> _lockNow() async {
     context.read<PinService>().lockNow();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Money, Schedule, and Projects are locked again.')),
+      const SnackBar(
+        content: Text('Money, Schedule, and Projects are locked again.'),
+      ),
     );
   }
 
@@ -98,7 +108,9 @@ class _SettingScreenState extends State<SettingScreen> {
         body: 'Check your tasks and schedule for today in MyVault.',
       );
     } else {
-      await NotificationService.instance.cancel(NotificationService.dailySummaryId);
+      await NotificationService.instance.cancel(
+        NotificationService.dailySummaryId,
+      );
     }
   }
 
@@ -198,7 +210,9 @@ class _SettingScreenState extends State<SettingScreen> {
                     SwitchListTile.adaptive(
                       secondary: const Icon(Icons.fingerprint_rounded),
                       title: const Text("Biometric unlock"),
-                      subtitle: const Text("Use fingerprint or face instead of the PIN"),
+                      subtitle: const Text(
+                        "Use fingerprint or face instead of the PIN",
+                      ),
                       value: _biometricEnabled,
                       onChanged: _toggleBiometric,
                     ),
@@ -211,8 +225,14 @@ class _SettingScreenState extends State<SettingScreen> {
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    leading: Icon(Icons.lock_open_outlined, color: scheme.error),
-                    title: Text("Remove PIN", style: TextStyle(color: scheme.error)),
+                    leading: Icon(
+                      Icons.lock_open_outlined,
+                      color: scheme.error,
+                    ),
+                    title: Text(
+                      "Remove PIN",
+                      style: TextStyle(color: scheme.error),
+                    ),
                     onTap: _removePin,
                   ),
                 ],

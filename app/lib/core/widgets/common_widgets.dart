@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Small metric card used in stat rows (Dashboard, Task Manager, Study
-/// Tracker stats, etc). Shows an icon, a big value, and a label.
 class StatCard extends StatelessWidget {
   final IconData icon;
   final String value;
@@ -25,7 +23,9 @@ class StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surface.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.28)),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.28),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,8 +60,6 @@ class StatCard extends StatelessWidget {
   }
 }
 
-/// Section title row with an optional trailing action - reused on every new
-/// screen so headings stay visually consistent.
 class SectionHeading extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -96,7 +94,10 @@ class SectionHeading extends StatelessWidget {
               if (subtitle != null)
                 Text(
                   subtitle!,
-                  style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
             ],
           ),
@@ -107,8 +108,6 @@ class SectionHeading extends StatelessWidget {
   }
 }
 
-/// Quick-action tile for the Dashboard grid. Shows a small lock badge when
-/// [locked] is true so the person knows a PIN will be requested.
 class QuickActionTile extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -139,7 +138,9 @@ class QuickActionTile extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.26)),
+            border: Border.all(
+              color: scheme.outlineVariant.withValues(alpha: 0.26),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

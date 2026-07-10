@@ -25,26 +25,50 @@ class NotificationService {
   Future<void> init() async {
     if (_initialized) return;
 
+    if (kIsWeb) {
+      debugPrint("Notifications not implemented for Web yet.");
+      _initialized = true;
+      return;
+    }
+
+    if (!(Platform.isAndroid || Platform.isIOS || Platform.isWindows)) {
+      debugPrint(
+        "Notifications not implemented for ${Platform.operatingSystem}",
+      );
+      _initialized = true;
+      return;
+    }
+
     try {
       tz_data.initializeTimeZones();
-      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+      final TimezoneInfo timezoneInfo =
+          await FlutterTimezone.getLocalTimezone();
+      final String timeZoneName = timezoneInfo.identifier;
       tz.setLocalLocation(tz.getLocation(timeZoneName));
     } catch (e) {
-      debugPrint('NotificationService: timezone setup failed: $e');
+      debugPrint("Timezone Error: $e");
     }
 
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosInit = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
+    const iosInit = DarwinInitializationSettings();
+    const windowsInit = WindowsInitializationSettings(
+      appName: 'MyVault',
+      appUserModelId: 'com.example.myvault',
+      guid: '12345678-1234-1234-1234-123456789012',
     );
 
     await _plugin.initialize(
-      const InitializationSettings(android: androidInit, iOS: iosInit),
+      settings: const InitializationSettings(
+        android: androidInit,
+        iOS: iosInit,
+        windows: windowsInit,
+      ),
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        debugPrint('Notification tapped: ${response.payload}');
+      },
     );
 
-    final androidPlugin = _plugin
+    final AndroidFlutterLocalNotificationsPlugin? androidPlugin = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
@@ -58,6 +82,7 @@ class NotificationService {
           importance: Importance.high,
         ),
       );
+
       await androidPlugin.requestNotificationsPermission();
       await androidPlugin.requestExactAlarmsPermission();
     }
@@ -74,6 +99,7 @@ class NotificationService {
       priority: Priority.high,
     ),
     iOS: DarwinNotificationDetails(),
+    windows: WindowsNotificationDetails(),
   );
 
   Future<void> scheduleAt({
@@ -89,14 +115,12 @@ class NotificationService {
 
     try {
       await _plugin.zonedSchedule(
-        id,
-        title,
-        body,
-        tzWhen,
-        _details,
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: tzWhen,
+        notificationDetails: _details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
       );
     } catch (e) {
       debugPrint('NotificationService: failed to schedule "$title": $e');
@@ -125,14 +149,12 @@ class NotificationService {
 
     try {
       await _plugin.zonedSchedule(
-        dailySummaryId,
-        'MyVault — Today',
-        body,
-        scheduled,
-        _details,
+        id: dailySummaryId,
+        title: 'MyVault — Today',
+        body: body,
+        scheduledDate: scheduled,
+        notificationDetails: _details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
         matchDateTimeComponents: DateTimeComponents.time,
       );
     } catch (e) {
@@ -143,15 +165,15 @@ class NotificationService {
   Future<void> showNow({required String title, required String body}) async {
     if (!_initialized) await init();
     await _plugin.show(
-      DateTime.now().millisecondsSinceEpoch.remainder(100000),
-      title,
-      body,
-      _details,
+      id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      title: title,
+      body: body,
+      notificationDetails: _details,
     );
   }
 
   Future<void> cancel(int id) async {
-    await _plugin.cancel(id);
+    await _plugin.cancel(id: id);
   }
 
   Future<void> cancelAll() async {
@@ -160,3 +182,15 @@ class NotificationService {
 
   bool get supportsExactAlarms => !kIsWeb && Platform.isAndroid;
 }
+
+
+// Notification button
+// ElevatedButton(
+//   onPressed: () async {
+//     await NotificationService.instance.showNow(
+//       title: 'Test Notification',
+//       body: 'Agar yeh dikhe toh sab sahi hai',
+//     );
+//   },
+//   child: const Text('Test Notification Bhejo'),
+// ),

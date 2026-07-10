@@ -1,4 +1,5 @@
 import 'package:app/Screens/Schedule.dart/Schedule_homepage.dart';
+import "package:app/core/services/notification_service.dart";
 import 'package:app/Screens/Statistics/statisticshome_screen.dart';
 import 'package:app/core/widgets/pin_gate.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +25,10 @@ class Appbar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   Future<void> _openSchedule(BuildContext context) async {
-    final unlocked = await ensureSectionUnlocked(context, sectionName: 'Schedule');
+    final unlocked = await ensureSectionUnlocked(
+      context,
+      sectionName: 'Schedule',
+    );
     if (!unlocked || !context.mounted) return;
     Navigator.push(
       context,

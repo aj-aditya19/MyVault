@@ -1,4 +1,3 @@
-/// A single logged study session - the core record for the Study Tracker.
 class StudySession {
   final String id;
   final String subject;
@@ -44,7 +43,9 @@ class StudySession {
 
   factory StudySession.fromJson(Map<String, dynamic> json) {
     return StudySession(
-      id: json['id']?.toString() ?? DateTime.now().microsecondsSinceEpoch.toString(),
+      id:
+          json['id']?.toString() ??
+          DateTime.now().microsecondsSinceEpoch.toString(),
       subject: json['subject']?.toString() ?? 'General',
       topic: json['topic']?.toString() ?? '',
       durationMinutes: (json['durationMinutes'] is int)
