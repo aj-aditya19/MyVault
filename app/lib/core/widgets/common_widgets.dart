@@ -19,40 +19,43 @@ class StatCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: scheme.surface.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(16),
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.28),
+          color: scheme.outlineVariant.withValues(alpha: 0.26),
         ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 18, color: color),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: color, size: 22),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Text(
             value,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
+              fontSize: 30,
+              fontWeight: FontWeight.bold,
               color: scheme.onSurface,
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
           ),
         ],
       ),
@@ -135,7 +138,7 @@ class QuickActionTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
@@ -144,18 +147,35 @@ class QuickActionTile extends StatelessWidget {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(icon, color: color, size: 20),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(icon, color: color, size: 20),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onSurface,
+                        ),
+                      ),
+                    ],
                   ),
+
                   if (locked)
                     Icon(
                       Icons.lock_rounded,
@@ -165,15 +185,6 @@ class QuickActionTile extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: scheme.onSurface,
-                ),
-              ),
             ],
           ),
         ),

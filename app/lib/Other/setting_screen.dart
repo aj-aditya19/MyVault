@@ -238,10 +238,10 @@ class _SettingScreenState extends State<SettingScreen> {
                 ],
                 const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.info),
-                  title: const Text("About App"),
-                  subtitle: const Text("MyVault 1.0.0"),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  leading: Icon(Icons.info),
+                  title: Text("About App"),
+                  subtitle: Text("MyVault 1.0.0"),
+                  trailing: Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
                     showAboutDialog(
                       context: context,

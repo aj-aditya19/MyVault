@@ -1,23 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-
 import 'package:app/Screens/Project/projecthome_screen.dart';
 import 'package:app/Screens/Quotes/quoteshome_screen.dart';
 import 'package:app/Screens/Schedule.dart/Schedule_homepage.dart';
 import 'package:app/Screens/Task/constant_goals_screen.dart';
 import 'package:app/Screens/Values/valueshome_screen.dart';
 import 'package:app/core/models/task_model.dart';
-import 'package:app/core/services/pin_service.dart';
 import 'package:app/core/services/storage_service.dart';
 import 'package:app/core/utils/responsive.dart';
 import 'package:app/core/widgets/common_widgets.dart';
 import 'package:app/core/widgets/pin_gate.dart';
 
 class DashboardScreen extends StatefulWidget {
-  /// Switches the parent shell to a primary tab (0 Dashboard, 1 Tasks,
-  /// 2 Study, 3 Money).
   final ValueChanged<int> onOpenTab;
-
   const DashboardScreen({super.key, required this.onOpenTab});
 
   @override
@@ -40,16 +34,11 @@ class _AgendaItem {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _loading = true;
-
   int _completedToday = 0;
   int _pendingToday = 0;
   double _weeklyCompletionRate = 0;
-
   double _studyHoursThisWeek = 0;
-  double? _moneyBalance;
-
   List<_AgendaItem> _agenda = [];
-
   static const List<String> _weekDays = [
     'Thurs',
     'Fri',
@@ -71,9 +60,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _loadTaskStats(),
       _loadStudyStats(),
       _loadScheduleAgenda(),
-      _loadMoneySnapshot(),
     ]);
-    if (mounted) setState(() => _loading = false);
+    if (mounted) {
+      setState(() => _loading = false);
+    }
   }
 
   Future<void> _loadTaskStats() async {
@@ -218,41 +208,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Color _colorForCategory(String name) {
     switch (name) {
       case 'study':
-        return const Color(0xFF1E88E5);
+        return Color(0xFF1E88E5);
       case 'project':
-        return const Color(0xFF8E24AA);
+        return Color(0xFF8E24AA);
       case 'personal':
-        return const Color(0xFF00897B);
+        return Color(0xFF00897B);
       case 'fitness':
-        return const Color(0xFFEF6C00);
+        return Color(0xFFEF6C00);
       default:
-        return const Color(0xFF607D8B);
-    }
-  }
-
-  Future<void> _loadMoneySnapshot() async {
-    final pinService = context.read<PinService>();
-    if (!pinService.isUnlocked) {
-      _moneyBalance = null;
-      return;
-    }
-    final raw = await StorageService.readLegacyFile('account_data.txt');
-    if (raw is Map && raw['balance'] != null) {
-      _moneyBalance = (raw['balance'] as num).toDouble();
+        return Color(0xFF607D8B);
     }
   }
 
   Future<void> _openLocked(String name, Widget Function() builder) async {
     final unlocked = await ensureSectionUnlocked(context, sectionName: name);
-    if (!unlocked || !mounted) return;
+    if (!unlocked || !mounted) {
+      return;
+    }
     await Navigator.push(context, MaterialPageRoute(builder: (_) => builder()));
-    if (mounted) _load();
+    if (mounted) {
+      _load();
+    }
   }
 
   String _greeting() {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
+    if (hour < 12) {
+      return 'Good morning';
+    }
+    if (hour < 17) {
+      return 'Good afternoon';
+    }
     return 'Good evening';
   }
 
@@ -269,12 +255,151 @@ class _DashboardScreenState extends State<DashboardScreen> {
       onRefresh: _load,
       child: ResponsiveContent(
         child: ListView(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(12),
           children: [
             Text(
               _greeting(),
-              style: TextStyle(fontSize: 14, color: scheme.onSurfaceVariant),
+              style: TextStyle(
+                fontSize: 25,
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
+              ),
             ),
+            SizedBox(height: 8),
+            InkWell(
+              onTap: () {
+                _openLocked('Constant Goals', () => ConstantGoalsScreen());
+              },
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                margin: EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: scheme.outline, width: 1.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Daily Tasks",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        _openLocked(
+                          'Constant Goals',
+                          () => ConstantGoalsScreen(),
+                        );
+                      },
+                      icon: Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 16,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  SectionHeading(
+                    title: 'Today\'s Agenda',
+                    subtitle: _agenda.isEmpty
+                        ? 'Nothing scheduled - Plan the day.'
+                        : 'Next ${_agenda.length} upcoming events',
+                  ),
+                  SizedBox(height: 10),
+                  if (_agenda.isEmpty)
+                    Container(
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: scheme.outlineVariant.withValues(alpha: 0.25),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'No upcoming schedule blocks for the rest of the day.',
+                            style: TextStyle(color: scheme.onSurfaceVariant),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              _openLocked(
+                                'Constant Goals',
+                                () => ScheduleHomepage(),
+                              );
+                            },
+                            icon: Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 16,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    ..._agenda.map(
+                      (item) => Container(
+                        margin: EdgeInsets.only(bottom: 8),
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: scheme.surface.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: scheme.outlineVariant.withValues(
+                              alpha: 0.25,
+                            ),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: item.color.withValues(alpha: 0.16),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                item.icon,
+                                color: item.color,
+                                size: 18,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                item.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              item.subtitle,
+                              style: TextStyle(color: scheme.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            SizedBox(height: 20),
             Text(
               'Here is your day at a glance',
               style: TextStyle(
@@ -283,8 +408,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: scheme.onSurface,
               ),
             ),
-            const SizedBox(height: 16),
-
+            SizedBox(height: 16),
             GridView.count(
               crossAxisCount: columns,
               shrinkWrap: true,
@@ -293,106 +417,203 @@ class _DashboardScreenState extends State<DashboardScreen> {
               crossAxisSpacing: 10,
               childAspectRatio: 1.6,
               children: [
-                StatCard(
-                  icon: Icons.check_circle_outline_rounded,
-                  value: '$_completedToday',
-                  label: 'Completed today',
-                  color: Colors.green,
-                ),
-                StatCard(
-                  icon: Icons.pending_actions_rounded,
-                  value: '$_pendingToday',
-                  label: 'Pending tasks',
-                  color: Colors.orange,
-                ),
-                StatCard(
-                  icon: Icons.menu_book_rounded,
-                  value: _studyHoursThisWeek.toStringAsFixed(1),
-                  label: 'Study hrs this week',
-                  color: Colors.blue,
-                ),
-                StatCard(
-                  icon: Icons.percent_rounded,
-                  value: '${_weeklyCompletionRate.toStringAsFixed(0)}%',
-                  label: 'Weekly completion',
-                  color: Colors.purple,
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-            SectionHeading(
-              title: 'Today\'s Agenda',
-              subtitle: _agenda.isEmpty
-                  ? 'Nothing scheduled - enjoy the open time'
-                  : 'Next ${_agenda.length} upcoming blocks',
-            ),
-            const SizedBox(height: 10),
-            if (_agenda.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: scheme.surface.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: scheme.outlineVariant.withValues(alpha: 0.25),
-                  ),
-                ),
-                child: Text(
-                  'No upcoming schedule blocks for the rest of the week.',
-                  style: TextStyle(color: scheme.onSurfaceVariant),
-                ),
-              )
-            else
-              ..._agenda.map(
-                (item) => Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
+                Container(
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: scheme.surface.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(14),
+                    color: scheme.surface,
                     border: Border.all(
-                      color: scheme.outlineVariant.withValues(alpha: 0.25),
+                      color: scheme.outlineVariant.withValues(alpha: 0.26),
+                      width: 1,
                     ),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Row(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: item.color.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(item.icon, color: item.color, size: 18),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          item.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        padding: EdgeInsets.all(8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.check_circle_outline_rounded,
+                              color: Colors.green,
+                              size: 25,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Completed today',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       Text(
-                        item.subtitle,
-                        style: TextStyle(color: scheme.onSurfaceVariant),
+                        '$_completedToday',
+                        style: TextStyle(
+                          fontSize: 30,
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: scheme.surface,
+                    border: Border.all(
+                      color: scheme.outlineVariant.withValues(alpha: 0.26),
+                      width: 1,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.pending_actions_rounded,
+                              color: Colors.orange,
+                              size: 25,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Pending today',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: scheme.onSurfaceVariant,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        '$_pendingToday',
+                        style: TextStyle(
+                          fontSize: 30,
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: scheme.surface,
+                    border: Border.all(
+                      color: scheme.outlineVariant.withValues(alpha: 0.26),
+                      width: 1.5,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.bar_chart_rounded,
+                              color: Colors.blue,
+                              size: 25,
+                            ),
+                            SizedBox(width: 8),
 
-            const SizedBox(height: 20),
-            const SectionHeading(title: 'Quick Actions'),
-            const SizedBox(height: 10),
+                            Text(
+                              'Weekly completion',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: scheme.onSurfaceVariant,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        '${_weeklyCompletionRate.toStringAsFixed(1)}%',
+                        style: TextStyle(
+                          fontSize: 30,
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: scheme.surface,
+                    border: Border.all(
+                      color: scheme.outlineVariant.withValues(alpha: 0.26),
+                      width: 1.5,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.school_rounded,
+                              color: Colors.purple,
+                              size: 25,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Study hours this week',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: scheme.onSurfaceVariant,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        '${_studyHoursThisWeek.toStringAsFixed(1)}h',
+                        style: TextStyle(
+                          fontSize: 30,
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+            SectionHeading(title: 'Quick Actions'),
+            SizedBox(height: 10),
             GridView.count(
               crossAxisCount: columns,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 10,
               crossAxisSpacing: 10,
-              childAspectRatio: 1.8,
+              childAspectRatio: 3.5,
               children: [
                 QuickActionTile(
                   icon: Icons.task_alt_rounded,
@@ -404,7 +625,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   icon: Icons.school_rounded,
                   label: 'Study Tracker',
                   color: Colors.blue,
-                  onTap: () => widget.onOpenTab(2),
+                  locked: true,
+                  onTap: () async {
+                    final unlocked = await ensureSectionUnlocked(
+                      context,
+                      sectionName: 'Study Tracker',
+                    );
+                    if (unlocked) widget.onOpenTab(3);
+                  },
                 ),
                 QuickActionTile(
                   icon: Icons.account_balance_wallet_rounded,
@@ -466,50 +694,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ],
             ),
-
-            if (_moneyBalance != null) ...[
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      scheme.primary.withValues(alpha: 0.85),
-                      scheme.tertiary.withValues(alpha: 0.85),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.account_balance_wallet_rounded,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Current balance',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '₹${_moneyBalance!.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 80),
+            SizedBox(height: 20),
           ],
         ),
       ),

@@ -104,7 +104,7 @@ class LicenseScreen extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           OutlinedButton.icon(
             onPressed: () {
               showLicensePage(
@@ -113,8 +113,11 @@ class LicenseScreen extends StatelessWidget {
                 applicationVersion: '1.0.0',
               );
             },
-            icon: const Icon(Icons.description_outlined),
-            label: const Text('View Full Flutter Licenses'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 56), // Height = 56
+            ),
+            icon: Icon(Icons.description_outlined),
+            label: Text('View Full Flutter Licenses'),
           ),
         ],
       ),

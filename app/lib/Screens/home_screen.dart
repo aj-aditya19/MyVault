@@ -6,7 +6,6 @@ import 'package:app/Screens/Money/moneyhome_screen.dart';
 import 'package:app/Screens/Study/study_home_screen.dart';
 import 'package:app/Screens/Task/taskhome_screen.dart';
 import 'package:app/core/utils/responsive.dart';
-import 'package:app/core/widgets/pin_gate.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -27,17 +26,6 @@ class _HomeScreenState extends State<HomeScreen> {
   int selectedIndex = 0;
   int _dashboardTick = 0;
 
-  static const List<NavItemData> _navItems = [
-    NavItemData(icon: Icons.dashboard_rounded, label: 'Dashboard'),
-    NavItemData(icon: Icons.task_alt_rounded, label: 'Tasks'),
-    NavItemData(icon: Icons.school_rounded, label: 'Study'),
-    NavItemData(
-      icon: Icons.account_balance_wallet_rounded,
-      label: 'Money',
-      locked: true,
-    ),
-  ];
-
   void _goToTab(int index) {
     setState(() {
       if (index == 0 && selectedIndex != 0) {
@@ -47,80 +35,74 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _handleNavTap(int index) async {
-    final item = _navItems[index];
-    if (item.locked) {
-      final unlocked = await ensureSectionUnlocked(
-        context,
-        sectionName: item.label,
-      );
-      if (!unlocked) return;
-    }
-    if (mounted) _goToTab(index);
-  }
-
+  // screens
   List<Widget> get screens => [
     DashboardScreen(key: ValueKey('dash-$_dashboardTick'), onOpenTab: _goToTab),
+    // DashboardScreen(onOpenTab: _goToTab),
     Taskhome(
       themeMode: widget.themeMode,
       onThemeModeChanged: widget.onThemeModeChanged,
     ),
-    const StudyHomeScreen(),
+    StudyHomeScreen(),
     Moneyhome(
       themeMode: widget.themeMode,
       onThemeModeChanged: widget.onThemeModeChanged,
     ),
   ];
 
-  Widget _buildGlassContainer(BuildContext context, Widget child) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  // container
+  // Widget _buildGlassContainer(BuildContext context, Widget child) {
+  //   final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(26),
-        color: Theme.of(
-          context,
-        ).colorScheme.surface.withValues(alpha: isDark ? 0.22 : 0.68),
-        border: Border.all(
-          color: Theme.of(
-            context,
-          ).colorScheme.outlineVariant.withValues(alpha: 0.32),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.10),
-            blurRadius: 26,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 360),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        child: KeyedSubtree(key: ValueKey(selectedIndex), child: child),
-      ),
-    );
-  }
+  //   return Container(
+  //     margin: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+  //     padding: const EdgeInsets.all(10),
+  //     decoration: BoxDecoration(
+  //       borderRadius: BorderRadius.circular(26),
+  //       color: Theme.of(
+  //         context,
+  //       ).colorScheme.surface.withValues(alpha: isDark ? 0.22 : 0.68),
+  //       border: Border.all(
+  //         color: Theme.of(
+  //           context,
+  //         ).colorScheme.outlineVariant.withValues(alpha: 0.32),
+  //       ),
+  //       boxShadow: [
+  //         BoxShadow(
+  //           color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.10),
+  //           blurRadius: 26,
+  //           offset: const Offset(0, 12),
+  //         ),
+  //       ],
+  //     ),
+  //     child: AnimatedSwitcher(
+  //       duration: const Duration(milliseconds: 1000),
+  //       switchInCurve: Curves.easeOutCubic,
+  //       switchOutCurve: Curves.easeInCubic,
+  //       child: KeyedSubtree(key: ValueKey(selectedIndex), child: child),
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
     final useSideNav = Responsive.useSideNav(context);
     final maxWidth = Responsive.maxContentWidth(context);
 
-    final content = LayoutBuilder(
+    final mainpart = LayoutBuilder(
       builder: (context, constraints) {
         final cappedWidth = maxWidth.isFinite
-            ? (constraints.maxWidth > maxWidth ? maxWidth : constraints.maxWidth)
+            ? (constraints.maxWidth > maxWidth
+                  ? maxWidth
+                  : constraints.maxWidth)
             : constraints.maxWidth;
 
         return Center(
           child: SizedBox(
             width: cappedWidth,
             height: double.infinity,
-            child: _buildGlassContainer(context, screens[selectedIndex]),
+            // child: _buildGlassContainer(context, screens[selectedIndex]),
+            child: screens[selectedIndex],
           ),
         );
       },
@@ -142,24 +124,16 @@ class _HomeScreenState extends State<HomeScreen> {
             ? Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Navigatebar(
-                    currentIndex: selectedIndex,
-                    items: _navItems,
-                    onTap: _handleNavTap,
-                  ),
+                  Navigatebar(currentIndex: selectedIndex, onTap: _goToTab),
                   const VerticalDivider(width: 1),
-                  Expanded(child: content),
+                  Expanded(child: mainpart),
                 ],
               )
-            : content,
+            : mainpart,
       ),
       bottomNavigationBar: useSideNav
           ? null
-          : Navigatebar(
-              currentIndex: selectedIndex,
-              items: _navItems,
-              onTap: _handleNavTap,
-            ),
+          : Navigatebar(currentIndex: selectedIndex, onTap: _goToTab),
     );
   }
 }

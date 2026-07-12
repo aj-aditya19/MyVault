@@ -383,7 +383,6 @@ class _AccountState extends State<Account> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    print("Current theme in Account: ${widget.themeMode}");
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: showGlobalDeductionDialog,
@@ -400,8 +399,10 @@ class _AccountState extends State<Account> {
                 borderRadius: BorderRadius.circular(10),
                 gradient: LinearGradient(
                   colors: [
-                    scheme.primary.withValues(alpha: 0.95),
-                    scheme.tertiary.withValues(alpha: 0.95),
+                    // scheme.primary.withValues(alpha: 0.95),
+                    // scheme.tertiary.withValues(alpha: 0.95),
+                    Color.fromARGB(255, 59, 159, 182),
+                    Color.fromARGB(255, 59, 159, 182),
                   ],
 
                   begin: Alignment.topLeft,
@@ -448,7 +449,7 @@ class _AccountState extends State<Account> {
                       Row(
                         children: [
                           Text(
-                            "\ ₹ ${totalBalance.toStringAsFixed(2)}",
+                            "₹ ${totalBalance.toStringAsFixed(2)}",
                             style: TextStyle(
                               fontSize: 20,
                               color: widget.themeMode == ThemeMode.dark

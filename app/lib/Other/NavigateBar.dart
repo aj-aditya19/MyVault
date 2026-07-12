@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:app/core/widgets/pin_gate.dart';
 import 'package:app/core/utils/responsive.dart';
 
 class NavItemData {
@@ -16,13 +17,11 @@ class NavItemData {
 
 class Navigatebar extends StatelessWidget {
   final int currentIndex;
-  final List<NavItemData> items;
   final ValueChanged<int> onTap;
 
   const Navigatebar({
     super.key,
     required this.currentIndex,
-    required this.items,
     required this.onTap,
   });
 
@@ -38,6 +37,21 @@ class Navigatebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const List<NavItemData> _navItems = [
+      NavItemData(
+        icon: Icons.dashboard_rounded,
+        label: 'Dashboard',
+        locked: false,
+      ),
+      NavItemData(icon: Icons.task_alt_rounded, label: 'Tasks', locked: false),
+      NavItemData(icon: Icons.school_rounded, label: 'Study', locked: true),
+      NavItemData(
+        icon: Icons.account_balance_wallet_rounded,
+        label: 'Money',
+        locked: true,
+      ),
+    ];
+
     final scheme = Theme.of(context).colorScheme;
 
     if (Responsive.useSideNav(context)) {
@@ -47,9 +61,22 @@ class Navigatebar extends StatelessWidget {
         extended: extended,
         minExtendedWidth: 180,
         selectedIndex: currentIndex,
-        onDestinationSelected: onTap,
+        onDestinationSelected: (index) async {
+          final item = _navItems[index];
+
+          if (item.locked) {
+            final unlocked = await ensureSectionUnlocked(
+              context,
+              sectionName: item.label,
+            );
+
+            if (!unlocked) return;
+          }
+
+          onTap(index);
+        },
         labelType: extended ? null : NavigationRailLabelType.all,
-        destinations: items
+        destinations: _navItems
             .map(
               (item) => NavigationRailDestination(
                 icon: _iconFor(item, scheme),
@@ -61,7 +88,7 @@ class Navigatebar extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      padding: EdgeInsets.fromLTRB(12, 0, 12, 12),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(22),
         child: BackdropFilter(
@@ -77,8 +104,21 @@ class Navigatebar extends StatelessWidget {
             child: NavigationBar(
               backgroundColor: Colors.transparent,
               selectedIndex: currentIndex,
-              onDestinationSelected: onTap,
-              destinations: items
+              onDestinationSelected: (index) async {
+                final item = _navItems[index];
+
+                if (item.locked) {
+                  final unlocked = await ensureSectionUnlocked(
+                    context,
+                    sectionName: item.label,
+                  );
+
+                  if (!unlocked) return;
+                }
+
+                onTap(index);
+              },
+              destinations: _navItems
                   .map(
                     (item) => NavigationDestination(
                       icon: _iconFor(item, scheme),
