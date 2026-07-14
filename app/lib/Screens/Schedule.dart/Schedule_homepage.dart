@@ -96,7 +96,9 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
 
   Future<void> _initFile() async {
     final dir = await getApplicationDocumentsDirectory();
-    _scheduleFile = File('${dir.path}/weekly_schedule.txt');
+    final myVaultDir = Directory('${dir.path}/MyVault');
+    await myVaultDir.create(recursive: true);
+    _scheduleFile = File('${myVaultDir.path}/weekly_schedule.txt');
 
     if (!await _scheduleFile.exists()) {
       await _scheduleFile.create();

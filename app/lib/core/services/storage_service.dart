@@ -30,7 +30,9 @@ class StorageService {
 
   static Future<File> _fileFor(String boxName) async {
     final dir = await getApplicationDocumentsDirectory();
-    return File('${dir.path}/$boxName.box.txt');
+    final myVaultDir = Directory('${dir.path}/MyVault');
+    await myVaultDir.create(recursive: true);
+    return File('${myVaultDir.path}/$boxName.box.txt');
   }
 
   static Future<T> read<T>(String boxName, T fallback) async {

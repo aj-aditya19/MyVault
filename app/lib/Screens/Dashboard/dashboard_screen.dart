@@ -38,7 +38,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _pendingToday = 0;
   double _weeklyCompletionRate = 0;
   double _studyHoursThisWeek = 0;
-  List<_AgendaItem> _agenda = [];
+  // List<_AgendaItem> _agenda = [];
   static const List<String> _weekDays = [
     'Thurs',
     'Fri',
@@ -59,7 +59,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await Future.wait([
       _loadTaskStats(),
       _loadStudyStats(),
-      _loadScheduleAgenda(),
+      // _loadScheduleAgenda(),
     ]);
     if (mounted) {
       setState(() => _loading = false);
@@ -152,58 +152,58 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return startOfWeek.add(Duration(days: index));
   }
 
-  Future<void> _loadScheduleAgenda() async {
-    final raw = await StorageService.readLegacyFile('weekly_schedule.txt');
-    final agenda = <_AgendaItem>[];
+  // Future<void> _loadScheduleAgenda() async {
+  //   final raw = await StorageService.readLegacyFile('weekly_schedule.txt');
+  //   final agenda = <_AgendaItem>[];
 
-    if (raw is Map) {
-      final now = DateTime.now();
-      final upcoming = <MapEntry<DateTime, Map<String, dynamic>>>[];
+  //   if (raw is Map) {
+  //     final now = DateTime.now();
+  //     final upcoming = <MapEntry<DateTime, Map<String, dynamic>>>[];
 
-      for (final day in _weekDays) {
-        final items = raw[day];
-        if (items is! List) continue;
-        final dayDate = _dateForDayName(day);
-        if (dayDate == null) continue;
+  //     for (final day in _weekDays) {
+  //       final items = raw[day];
+  //       if (items is! List) continue;
+  //       final dayDate = _dateForDayName(day);
+  //       if (dayDate == null) continue;
 
-        for (final item in items) {
-          if (item is! Map) continue;
-          final map = Map<String, dynamic>.from(item);
-          if (map['isDone'] == true) continue;
-          final startMinute = (map['startMinute'] is int)
-              ? map['startMinute'] as int
-              : int.tryParse(map['startMinute']?.toString() ?? '') ?? 0;
-          final occursAt = DateTime(
-            dayDate.year,
-            dayDate.month,
-            dayDate.day,
-          ).add(Duration(minutes: startMinute));
-          if (occursAt.isAfter(now)) {
-            upcoming.add(MapEntry(occursAt, map));
-          }
-        }
-      }
+  //       for (final item in items) {
+  //         if (item is! Map) continue;
+  //         final map = Map<String, dynamic>.from(item);
+  //         if (map['isDone'] == true) continue;
+  //         final startMinute = (map['startMinute'] is int)
+  //             ? map['startMinute'] as int
+  //             : int.tryParse(map['startMinute']?.toString() ?? '') ?? 0;
+  //         final occursAt = DateTime(
+  //           dayDate.year,
+  //           dayDate.month,
+  //           dayDate.day,
+  //         ).add(Duration(minutes: startMinute));
+  //         if (occursAt.isAfter(now)) {
+  //           upcoming.add(MapEntry(occursAt, map));
+  //         }
+  //       }
+  //     }
 
-      upcoming.sort((a, b) => a.key.compareTo(b.key));
-      for (final entry in upcoming.take(3)) {
-        final categoryName = entry.value['category']?.toString() ?? 'other';
-        final hour = entry.key.hour;
-        final minute = entry.key.minute.toString().padLeft(2, '0');
-        final period = hour >= 12 ? 'PM' : 'AM';
-        final hour12 = hour % 12 == 0 ? 12 : hour % 12;
-        agenda.add(
-          _AgendaItem(
-            title: entry.value['title']?.toString() ?? 'Schedule item',
-            subtitle: '$hour12:$minute $period',
-            icon: Icons.calendar_month_rounded,
-            color: _colorForCategory(categoryName),
-          ),
-        );
-      }
-    }
+  //     upcoming.sort((a, b) => a.key.compareTo(b.key));
+  //     for (final entry in upcoming.take(3)) {
+  //       final categoryName = entry.value['category']?.toString() ?? 'other';
+  //       final hour = entry.key.hour;
+  //       final minute = entry.key.minute.toString().padLeft(2, '0');
+  //       final period = hour >= 12 ? 'PM' : 'AM';
+  //       final hour12 = hour % 12 == 0 ? 12 : hour % 12;
+  //       agenda.add(
+  //         _AgendaItem(
+  //           title: entry.value['title']?.toString() ?? 'Schedule item',
+  //           subtitle: '$hour12:$minute $period',
+  //           icon: Icons.calendar_month_rounded,
+  //           color: _colorForCategory(categoryName),
+  //         ),
+  //       );
+  //     }
+  //   }
 
-    _agenda = agenda;
-  }
+  //   _agenda = agenda;
+  // }
 
   Color _colorForCategory(String name) {
     switch (name) {
@@ -258,7 +258,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           padding: EdgeInsets.all(12),
           children: [
             Text(
-              _greeting(),
+              "${_greeting()},👋",
               style: TextStyle(
                 fontSize: 25,
                 color: scheme.onSurfaceVariant,
@@ -305,100 +305,100 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
             ),
-            Container(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  SectionHeading(
-                    title: 'Today\'s Agenda',
-                    subtitle: _agenda.isEmpty
-                        ? 'Nothing scheduled - Plan the day.'
-                        : 'Next ${_agenda.length} upcoming events',
-                  ),
-                  SizedBox(height: 10),
-                  if (_agenda.isEmpty)
-                    Container(
-                      padding: EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: scheme.outlineVariant.withValues(alpha: 0.25),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'No upcoming schedule blocks for the rest of the day.',
-                            style: TextStyle(color: scheme.onSurfaceVariant),
-                          ),
-                          IconButton(
-                            onPressed: () {
-                              _openLocked(
-                                'Constant Goals',
-                                () => ScheduleHomepage(),
-                              );
-                            },
-                            icon: Icon(
-                              Icons.arrow_forward_ios_rounded,
-                              size: 16,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    ..._agenda.map(
-                      (item) => Container(
-                        margin: EdgeInsets.only(bottom: 8),
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: scheme.surface.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: scheme.outlineVariant.withValues(
-                              alpha: 0.25,
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: item.color.withValues(alpha: 0.16),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(
-                                item.icon,
-                                color: item.color,
-                                size: 18,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                item.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              item.subtitle,
-                              style: TextStyle(color: scheme.onSurfaceVariant),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
+            // Container(
+            //   padding: EdgeInsets.all(16),
+            //   child: Column(
+            //     children: [
+            //       SectionHeading(
+            //         title: 'Today\'s Agenda',
+            //         subtitle: _agenda.isEmpty
+            //             ? 'Nothing scheduled - Plan the day.'
+            //             : 'Next ${_agenda.length} upcoming events',
+            //       ),
+            //       SizedBox(height: 10),
+            //       if (_agenda.isEmpty)
+            //         Container(
+            //           padding: EdgeInsets.all(10),
+            //           decoration: BoxDecoration(
+            //             borderRadius: BorderRadius.circular(14),
+            //             border: Border.all(
+            //               color: scheme.outlineVariant.withValues(alpha: 0.25),
+            //               width: 1.5,
+            //             ),
+            //           ),
+            //           child: Row(
+            //             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            //             children: [
+            //               Text(
+            //                 'No upcoming schedule blocks for the rest of the day.',
+            //                 style: TextStyle(color: scheme.onSurfaceVariant),
+            //               ),
+            //               IconButton(
+            //                 onPressed: () {
+            //                   _openLocked(
+            //                     'Constant Goals',
+            //                     () => ScheduleHomepage(),
+            //                   );
+            //                 },
+            //                 icon: Icon(
+            //                   Icons.arrow_forward_ios_rounded,
+            //                   size: 16,
+            //                   color: scheme.onSurfaceVariant,
+            //                 ),
+            //               ),
+            //             ],
+            //           ),
+            //         )
+            //       else
+            //         ..._agenda.map(
+            //           (item) => Container(
+            //             margin: EdgeInsets.only(bottom: 8),
+            //             padding: EdgeInsets.all(12),
+            //             decoration: BoxDecoration(
+            //               color: scheme.surface.withValues(alpha: 0.7),
+            //               borderRadius: BorderRadius.circular(14),
+            //               border: Border.all(
+            //                 color: scheme.outlineVariant.withValues(
+            //                   alpha: 0.25,
+            //                 ),
+            //               ),
+            //             ),
+            //             child: Row(
+            //               children: [
+            //                 Container(
+            //                   padding: const EdgeInsets.all(8),
+            //                   decoration: BoxDecoration(
+            //                     color: item.color.withValues(alpha: 0.16),
+            //                     borderRadius: BorderRadius.circular(10),
+            //                   ),
+            //                   child: Icon(
+            //                     item.icon,
+            //                     color: item.color,
+            //                     size: 18,
+            //                   ),
+            //                 ),
+            //                 const SizedBox(width: 12),
+            //                 Expanded(
+            //                   child: Text(
+            //                     item.title,
+            //                     maxLines: 1,
+            //                     overflow: TextOverflow.ellipsis,
+            //                     style: const TextStyle(
+            //                       fontWeight: FontWeight.w600,
+            //                     ),
+            //                   ),
+            //                 ),
+            //                 Text(
+            //                   item.subtitle,
+            //                   style: TextStyle(color: scheme.onSurfaceVariant),
+            //                 ),
+            //               ],
+            //             ),
+            //           ),
+            //         ),
+            //     ],
+            //   ),
+            // ),
             SizedBox(height: 20),
             Text(
               'Here is your day at a glance',
@@ -581,7 +581,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                             SizedBox(width: 8),
                             Text(
-                              'Study hours this week',
+                              'Study hours',
                               style: TextStyle(
                                 fontSize: 14,
                                 color: scheme.onSurfaceVariant,
@@ -613,7 +613,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 10,
               crossAxisSpacing: 10,
-              childAspectRatio: 3.5,
+              childAspectRatio: 3.6,
               children: [
                 QuickActionTile(
                   icon: Icons.task_alt_rounded,

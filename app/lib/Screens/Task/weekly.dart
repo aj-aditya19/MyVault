@@ -63,7 +63,9 @@ class _WeeklyTaskState extends State<WeeklyTask> {
 
   Future<void> initFile() async {
     final dir = await getApplicationDocumentsDirectory();
-    weeklyFile = File('${dir.path}/weekly_tasks.txt');
+    final myVaultDir = Directory('${dir.path}/MyVault');
+    await myVaultDir.create(recursive: true);
+    weeklyFile = File('${myVaultDir.path}/weekly_tasks.txt');
 
     if (!await weeklyFile.exists()) {
       await weeklyFile.create();

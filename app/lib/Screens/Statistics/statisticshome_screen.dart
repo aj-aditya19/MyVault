@@ -73,8 +73,9 @@ class _StatisticshomeScreenState extends State<StatisticshomeScreen> {
 
   Future<void> _initFile() async {
     final dir = await getApplicationDocumentsDirectory();
-
-    _checkinFile = File('${dir.path}/daily_checkin.txt');
+    final myVaultDir = Directory('${dir.path}/MyVault');
+    await myVaultDir.create(recursive: true);
+    _checkinFile = File('${myVaultDir.path}/daily_checkin.txt');
 
     if (!await _checkinFile.exists()) {
       await _checkinFile.create();

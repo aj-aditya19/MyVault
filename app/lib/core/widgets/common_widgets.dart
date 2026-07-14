@@ -138,7 +138,7 @@ class QuickActionTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
@@ -184,7 +184,6 @@ class QuickActionTile extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 10),
             ],
           ),
         ),

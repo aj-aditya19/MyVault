@@ -36,7 +36,9 @@ class _QuoteshomeState extends State<Quoteshome> {
 
   Future<void> inifile() async {
     final dir = await getApplicationDocumentsDirectory();
-    quotesFile = File('${dir.path}/quotes_file.txt');
+    final myVaultDir = Directory('${dir.path}/MyVault');
+    await myVaultDir.create(recursive: true);
+    quotesFile = File('${myVaultDir.path}/quotes_file.txt');
 
     if (!await quotesFile.exists()) {
       await quotesFile.create();

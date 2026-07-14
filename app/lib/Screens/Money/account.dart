@@ -50,7 +50,9 @@ class _AccountState extends State<Account> {
 
   Future<File> getFile() async {
     final dir = await getApplicationDocumentsDirectory();
-    return File("${dir.path}/account_data.txt");
+    final myVaultDir = Directory('${dir.path}/MyVault');
+    await myVaultDir.create(recursive: true);
+    return File("${myVaultDir.path}/account_data.txt");
   }
 
   Future<void> saveData() async {

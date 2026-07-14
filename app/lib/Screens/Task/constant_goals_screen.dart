@@ -1,245 +1,3 @@
-// import 'dart:convert';
-// import 'dart:io';
-
-// import 'package:encrypt/encrypt.dart' as encrypt;
-// import 'package:flutter/material.dart';
-// import 'package:path_provider/path_provider.dart';
-
-// class ConstantGoalsScreen extends StatefulWidget {
-//   const ConstantGoalsScreen({super.key});
-
-//   @override
-//   State<ConstantGoalsScreen> createState() => _ConstantGoalsScreenState();
-// }
-
-// class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
-//   final TextEditingController _controller = TextEditingController();
-//   final List<String> _goals = [];
-
-//   late File _goalsFile;
-//   late encrypt.Key _key;
-//   late encrypt.Encrypter _encrypter;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _key = encrypt.Key.fromUtf8('my 32 length key................');
-//     _encrypter = encrypt.Encrypter(encrypt.AES(_key));
-//     _initFile();
-//   }
-
-//   String _encryptData(String data) {
-//     final iv = encrypt.IV.fromSecureRandom(16);
-//     final encrypted = _encrypter.encrypt(data, iv: iv);
-//     final combined = iv.bytes + encrypted.bytes;
-//     return base64Encode(combined);
-//   }
-
-//   String _decryptData(String base64Data) {
-//     final combined = base64Decode(base64Data);
-//     final iv = encrypt.IV(combined.sublist(0, 16));
-//     final encryptedBytes = combined.sublist(16);
-//     final encrypted = encrypt.Encrypted(encryptedBytes);
-//     return _encrypter.decrypt(encrypted, iv: iv);
-//   }
-
-//   Future<void> _initFile() async {
-//     final dir = await getApplicationDocumentsDirectory();
-//     _goalsFile = File('${dir.path}/constant_goals.txt');
-
-//     if (!await _goalsFile.exists()) {
-//       await _goalsFile.create();
-//       await _goalsFile.writeAsString(_encryptData(jsonEncode(<String>[])));
-//     }
-
-//     await _loadGoals();
-//   }
-
-//   Future<void> _loadGoals() async {
-//     try {
-//       final content = await _goalsFile.readAsString();
-//       if (content.isEmpty) return;
-
-//       final decrypted = _decryptData(content);
-//       final decoded = jsonDecode(decrypted);
-//       if (decoded is List) {
-//         setState(() {
-//           _goals
-//             ..clear()
-//             ..addAll(decoded.map((e) => e.toString()));
-//         });
-//       }
-//     } catch (_) {
-//       try {
-//         final fallback = await _goalsFile.readAsString();
-//         final decoded = jsonDecode(fallback);
-//         if (decoded is List) {
-//           setState(() {
-//             _goals
-//               ..clear()
-//               ..addAll(decoded.map((e) => e.toString()));
-//           });
-//           await _saveGoals();
-//         }
-//       } catch (_) {}
-//     }
-//   }
-
-//   Future<void> _saveGoals() async {
-//     await _goalsFile.writeAsString(_encryptData(jsonEncode(_goals)));
-//   }
-
-//   Future<void> _addGoal() async {
-//     final text = _controller.text.trim();
-//     if (text.isEmpty) return;
-
-//     setState(() {
-//       _goals.add(text);
-//       _controller.clear();
-//     });
-//     await _saveGoals();
-//   }
-
-//   Future<void> _removeGoal(int index) async {
-//     setState(() {
-//       _goals.removeAt(index);
-//     });
-//     await _saveGoals();
-//   }
-
-//   Future<void> _editGoal(int index) async {
-//     final editController = TextEditingController(text: _goals[index]);
-//     await showDialog<void>(
-//       context: context,
-//       builder: (context) => AlertDialog(
-//         title: const Text('Edit Goal'),
-//         content: TextField(
-//           controller: editController,
-//           decoration: const InputDecoration(hintText: 'Goal text'),
-//         ),
-//         actions: [
-//           TextButton(
-//             onPressed: () => Navigator.pop(context),
-//             child: const Text('Cancel'),
-//           ),
-//           FilledButton(
-//             onPressed: () {
-//               final text = editController.text.trim();
-//               if (text.isNotEmpty) {
-//                 setState(() {
-//                   _goals[index] = text;
-//                 });
-//               }
-//               Navigator.pop(context);
-//             },
-//             child: const Text('Save'),
-//           ),
-//         ],
-//       ),
-//     );
-//     await _saveGoals();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final scheme = Theme.of(context).colorScheme;
-
-//     return Scaffold(
-//       appBar: AppBar(title: const Text('Constant Goals')),
-//       body: Padding(
-//         padding: const EdgeInsets.all(16),
-//         child: Column(
-//           children: [
-//             Container(
-//               padding: const EdgeInsets.symmetric(horizontal: 12),
-//               decoration: BoxDecoration(
-//                 color: scheme.surfaceContainerHighest.withValues(alpha: 0.64),
-//                 borderRadius: BorderRadius.circular(12),
-//                 border: Border.all(
-//                   color: scheme.outlineVariant.withValues(alpha: 0.30),
-//                 ),
-//               ),
-//               child: Row(
-//                 children: [
-//                   Expanded(
-//                     child: TextField(
-//                       controller: _controller,
-//                       decoration: const InputDecoration(
-//                         border: InputBorder.none,
-//                         hintText: 'Add a daily constant goal',
-//                       ),
-//                     ),
-//                   ),
-//                   IconButton(
-//                     onPressed: _addGoal,
-//                     icon: const Icon(Icons.add_circle_rounded),
-//                   ),
-//                 ],
-//               ),
-//             ),
-//             const SizedBox(height: 12),
-//             Align(
-//               alignment: Alignment.centerLeft,
-//               child: Text(
-//                 'These goals appear in your Daily Check-in.',
-//                 style: TextStyle(color: scheme.onSurfaceVariant),
-//               ),
-//             ),
-//             const SizedBox(height: 12),
-//             Expanded(
-//               child: _goals.isEmpty
-//                   ? Center(
-//                       child: Text(
-//                         'No constant goals yet',
-//                         style: TextStyle(color: scheme.onSurfaceVariant),
-//                       ),
-//                     )
-//                   : ListView.builder(
-//                       itemCount: _goals.length,
-//                       itemBuilder: (context, index) {
-//                         final goal = _goals[index];
-//                         return Container(
-//                           margin: const EdgeInsets.only(bottom: 10),
-//                           decoration: BoxDecoration(
-//                             color: scheme.surface.withValues(alpha: 0.70),
-//                             borderRadius: BorderRadius.circular(12),
-//                             border: Border.all(
-//                               color: scheme.outlineVariant.withValues(
-//                                 alpha: 0.24,
-//                               ),
-//                             ),
-//                           ),
-//                           child: ListTile(
-//                             leading: const Icon(Icons.flag_outlined),
-//                             title: Text(goal),
-//                             trailing: Wrap(
-//                               spacing: 0,
-//                               children: [
-//                                 IconButton(
-//                                   onPressed: () => _editGoal(index),
-//                                   icon: const Icon(Icons.edit_outlined),
-//                                 ),
-//                                 IconButton(
-//                                   onPressed: () => _removeGoal(index),
-//                                   icon: Icon(
-//                                     Icons.delete_outline,
-//                                     color: scheme.error,
-//                                   ),
-//                                 ),
-//                               ],
-//                             ),
-//                           ),
-//                         );
-//                       },
-//                     ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
@@ -248,8 +6,6 @@ import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// A single "constant goal" (daily habit) with a per-day completion map.
-/// Key format for completion map: 'yyyy-MM-dd'.
 class GoalEntry {
   GoalEntry({
     required this.id,
@@ -281,23 +37,6 @@ class GoalEntry {
   }
 }
 
-/// One day's wellness log: mood on a 1-5 scale + hours of sleep.
-class WellnessDay {
-  WellnessDay({this.mood, this.sleepHours});
-
-  int? mood; // 1..5
-  double? sleepHours;
-
-  Map<String, dynamic> toJson() => {'mood': mood, 'sleep': sleepHours};
-
-  factory WellnessDay.fromJson(Map<String, dynamic> json) => WellnessDay(
-    mood: json['mood'] is int
-        ? json['mood'] as int
-        : (json['mood'] as num?)?.toInt(),
-    sleepHours: (json['sleep'] as num?)?.toDouble(),
-  );
-}
-
 class ConstantGoalsScreen extends StatefulWidget {
   const ConstantGoalsScreen({super.key});
 
@@ -306,17 +45,11 @@ class ConstantGoalsScreen extends StatefulWidget {
 }
 
 class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
-  static const double _cellWidth = 34;
-  static const double _cellHeight = 40;
-  static const double _nameColWidth = 130;
-  static const double _headerRowHeight = 26;
-  static const double _chartHeight = 110;
-  static const double _wellnessHeight = 120;
-  static const double _maxSleepHours = 10;
+  static const double _headerRowHeight = 34;
+  static const double _cellHeight = 44;
 
   final TextEditingController _controller = TextEditingController();
   final List<GoalEntry> _goals = [];
-  final Map<String, WellnessDay> _wellness = {};
 
   late File _goalsFile;
   late encrypt.Key _key;
@@ -334,7 +67,25 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
   }
 
   // ---------------------------------------------------------------------
-  // Helpers
+  // Responsive sizing helpers
+  // ---------------------------------------------------------------------
+
+  double _cellWidthFor(double screenWidth) {
+    if (screenWidth < 380) return 30;
+    if (screenWidth < 600) return 34;
+    if (screenWidth < 900) return 38;
+    return 42;
+  }
+
+  double _nameColWidthFor(double screenWidth) {
+    if (screenWidth < 380) return 96;
+    if (screenWidth < 600) return 120;
+    if (screenWidth < 900) return 150;
+    return 180;
+  }
+
+  // ---------------------------------------------------------------------
+  // Date helpers
   // ---------------------------------------------------------------------
 
   static DateTime _startOfDay(DateTime d) => DateTime(d.year, d.month, d.day);
@@ -383,8 +134,57 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
     return done / _goals.length;
   }
 
+  /// Overall completion rate for one goal, across every tracked day up to today.
+  double _goalCompletionRate(GoalEntry g) {
+    final trackedDays = _todayStart.difference(_startDate).inDays + 1;
+    if (trackedDays <= 0) return 0;
+    final done = g.completion.entries.where((e) => e.value == true).length;
+    return (done / trackedDays).clamp(0, 1);
+  }
+
+  /// Average completion rate across a given week, counting only days
+  /// that have already happened (today included, future days excluded).
+  double _weekAverage(int weekIndex) {
+    final weeks = _weeks;
+    if (weekIndex < 0 || weekIndex >= weeks.length) return 0;
+    final validDays = weeks[weekIndex]
+        .where((d) => !d.isAfter(_todayStart))
+        .toList();
+    if (validDays.isEmpty) return 0;
+    final total = validDays.fold<double>(
+      0,
+      (sum, d) => sum + _completionForDay(d),
+    );
+    return total / validDays.length;
+  }
+
+  /// 0-indexed week that contains "today".
+  int get _currentWeekIndex {
+    final daysSinceStart = _todayStart.difference(_startDate).inDays;
+    return daysSinceStart ~/ 7;
+  }
+
+  double get _todayCompletionRate => _completionForDay(_todayStart);
+
+  bool get _hasYesterday => _todayStart.difference(_startDate).inDays >= 1;
+
+  double get _yesterdayCompletionRate =>
+      _completionForDay(_todayStart.subtract(const Duration(days: 1)));
+
+  double get _todayVsYesterdayDelta =>
+      _todayCompletionRate - _yesterdayCompletionRate;
+
+  bool get _hasPreviousWeek => _currentWeekIndex >= 1;
+
+  double get _currentWeekAvg => _weekAverage(_currentWeekIndex);
+
+  double get _previousWeekAvg =>
+      _hasPreviousWeek ? _weekAverage(_currentWeekIndex - 1) : 0;
+
+  double get _weekVsPreviousDelta => _currentWeekAvg - _previousWeekAvg;
+
   // ---------------------------------------------------------------------
-  // Persistence
+  // Persistence (unchanged logic — encrypted single-file read/write)
   // ---------------------------------------------------------------------
 
   String _encryptData(String data) {
@@ -404,17 +204,15 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
 
   Future<void> _initFile() async {
     final dir = await getApplicationDocumentsDirectory();
-    _goalsFile = File('${dir.path}/constant_goals.txt');
+    final myVaultDir = Directory('${dir.path}/MyVault');
+    await myVaultDir.create(recursive: true);
+    _goalsFile = File('${myVaultDir.path}/constant_goals.txt');
 
     if (!await _goalsFile.exists()) {
       await _goalsFile.create();
       await _goalsFile.writeAsString(
         _encryptData(
-          jsonEncode({
-            'startDate': _dateKey(_startDate),
-            'goals': <dynamic>[],
-            'wellness': <String, dynamic>{},
-          }),
+          jsonEncode({'startDate': _dateKey(_startDate), 'goals': <dynamic>[]}),
         ),
       );
     }
@@ -441,7 +239,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
 
     if (decoded != null) {
       final rawGoals = (decoded['goals'] as List?) ?? [];
-      final rawWellness = (decoded['wellness'] as Map?) ?? {};
       final startDateStr = decoded['startDate']?.toString();
 
       setState(() {
@@ -449,16 +246,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
           ..clear()
           ..addAll(
             rawGoals.map((e) => GoalEntry.fromJson(e as Map<String, dynamic>)),
-          );
-        _wellness
-          ..clear()
-          ..addAll(
-            rawWellness.map(
-              (k, v) => MapEntry(
-                k.toString(),
-                WellnessDay.fromJson(v as Map<String, dynamic>),
-              ),
-            ),
           );
         if (startDateStr != null) {
           final parts = startDateStr.split('-');
@@ -482,13 +269,12 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
     final payload = {
       'startDate': _dateKey(_startDate),
       'goals': _goals.map((g) => g.toJson()).toList(),
-      'wellness': _wellness.map((k, v) => MapEntry(k, v.toJson())),
     };
     await _goalsFile.writeAsString(_encryptData(jsonEncode(payload)));
   }
 
   // ---------------------------------------------------------------------
-  // Goal actions
+  // Goal actions (unchanged logic)
   // ---------------------------------------------------------------------
 
   Future<void> _addGoal() async {
@@ -554,88 +340,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
   }
 
   // ---------------------------------------------------------------------
-  // Wellness actions
-  // ---------------------------------------------------------------------
-
-  Future<void> _openWellnessDialog(DateTime day) async {
-    if (day.isAfter(_todayStart)) return;
-    final key = _dateKey(day);
-    final existing = _wellness[key];
-    int mood = existing?.mood ?? 3;
-    final sleepController = TextEditingController(
-      text: existing?.sleepHours?.toString() ?? '',
-    );
-
-    await showDialog<void>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text('Wellness · ${day.day}/${day.month}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Mood'),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(5, (i) {
-                  final value = i + 1;
-                  final emojis = ['😞', '🙁', '😐', '🙂', '😄'];
-                  final selected = mood == value;
-                  return GestureDetector(
-                    onTap: () => setDialogState(() => mood = value),
-                    child: CircleAvatar(
-                      radius: 18,
-                      backgroundColor: selected
-                          ? Theme.of(
-                              context,
-                            ).colorScheme.primary.withValues(alpha: 0.25)
-                          : Colors.transparent,
-                      child: Text(
-                        emojis[i],
-                        style: const TextStyle(fontSize: 20),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: sleepController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: const InputDecoration(
-                  labelText: 'Hours of sleep',
-                  suffixText: 'hrs',
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final sleep = double.tryParse(sleepController.text.trim());
-                setState(() {
-                  _wellness[key] = WellnessDay(mood: mood, sleepHours: sleep);
-                });
-                _saveData();
-                Navigator.pop(context);
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ---------------------------------------------------------------------
   // Build
   // ---------------------------------------------------------------------
 
@@ -647,170 +351,435 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cellWidth = _cellWidthFor(screenWidth);
+    final nameColWidth = _nameColWidthFor(screenWidth);
+
     return Scaffold(
+      backgroundColor: scheme.surface,
       appBar: AppBar(
         title: const Text('Constant Goals'),
-        actions: [
-          IconButton(
-            tooltip: "Log today's wellness",
-            onPressed: () => _openWellnessDialog(_todayStart),
-            icon: const Icon(Icons.mood_outlined),
-          ),
-        ],
+        backgroundColor: scheme.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildAddGoalInput(scheme),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'These goals appear in your Daily Check-in.',
-                style: TextStyle(color: scheme.onSurfaceVariant),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildAddGoalInput(scheme),
+              const SizedBox(height: 10),
+              _buildInfoBanner(scheme),
+              const SizedBox(height: 18),
+              Expanded(
+                child: _goals.isEmpty
+                    ? _buildEmptyState(scheme)
+                    : SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildTacticsAndChartRow(scheme, screenWidth),
+                            const SizedBox(height: 16),
+                            _sectionCard(
+                              scheme: scheme,
+                              icon: Icons.checklist_rounded,
+                              title: 'Goals',
+                              child: _buildWeeklyGrid(
+                                scheme,
+                                cellWidth,
+                                nameColWidth,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                        ),
+                      ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: _goals.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No constant goals yet',
-                        style: TextStyle(color: scheme.onSurfaceVariant),
-                      ),
-                    )
-                  : SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _sectionTitle(context, 'Daily Progress'),
-                          const SizedBox(height: 8),
-                          _buildDailyProgressChart(scheme),
-                          const SizedBox(height: 24),
-                          _sectionTitle(context, 'Goals'),
-                          const SizedBox(height: 8),
-                          _buildWeeklyGrid(scheme),
-                          const SizedBox(height: 24),
-                          _sectionTitle(context, 'Overall wellness'),
-                          const SizedBox(height: 8),
-                          _buildWellnessSection(scheme),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
-                    ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _sectionTitle(BuildContext context, String text) => Text(
-    text,
-    style: Theme.of(
-      context,
-    ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-  );
+  // --- Small reusable pieces --------------------------------------------
+
+  Widget _buildInfoBanner(ColorScheme scheme) {
+    return Row(
+      children: [
+        Icon(
+          Icons.info_outline_rounded,
+          size: 14,
+          color: scheme.onSurfaceVariant,
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            'These goals appear in your Daily Check-in.',
+            style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12.5),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState(ColorScheme scheme) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.flag_circle_outlined,
+            size: 48,
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'No constant goals yet',
+            style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 15),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Add one above to start tracking it daily',
+            style: TextStyle(
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+              fontSize: 12.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionCard({
+    required ColorScheme scheme,
+    required IconData icon,
+    required String title,
+    required Widget child,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: scheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
 
   Widget _buildAddGoalInput(ColorScheme scheme) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.64),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.30),
-        ),
+        color: scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Icon(
+              Icons.flag_outlined,
+              size: 18,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
           Expanded(
             child: TextField(
               controller: _controller,
-              decoration: const InputDecoration(
+              style: TextStyle(color: scheme.onSurface),
+              decoration: InputDecoration(
                 border: InputBorder.none,
                 hintText: 'Add a daily constant goal',
+                hintStyle: TextStyle(
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 12,
+                ),
               ),
               onSubmitted: (_) => _addGoal(),
             ),
           ),
-          IconButton(
-            onPressed: _addGoal,
-            icon: const Icon(Icons.add_circle_rounded),
+          Container(
+            margin: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: scheme.primary,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              onPressed: _addGoal,
+              icon: Icon(Icons.add_rounded, color: scheme.onPrimary),
+              visualDensity: VisualDensity.compact,
+            ),
           ),
         ],
       ),
     );
   }
 
-  // --- Daily progress bar chart -----------------------------------------
+  // --- Tactics + week-wise chart row ------------------------------------
 
-  Widget _buildDailyProgressChart(ColorScheme scheme) {
-    final days = _allDays;
-    return SizedBox(
-      height: _chartHeight,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: days.map((day) {
-            final pct = _completionForDay(day);
-            final isToday = _dateKey(day) == _dateKey(_todayStart);
-            final isFuture = day.isAfter(_todayStart);
-            return Container(
-              width: _cellWidth,
-              padding: const EdgeInsets.symmetric(horizontal: 3),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  if (pct > 0)
-                    Text(
-                      '${(pct * 100).round()}',
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  const SizedBox(height: 2),
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    height: isFuture
-                        ? 2
-                        : math.max(2, (_chartHeight - 40) * pct),
-                    decoration: BoxDecoration(
-                      color: isFuture
-                          ? scheme.outlineVariant.withValues(alpha: 0.3)
-                          : (isToday
-                                ? scheme.primary
-                                : scheme.primary.withValues(alpha: 0.75)),
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(4),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _dayLetter(day),
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
+  Widget _buildTacticsAndChartRow(ColorScheme scheme, double screenWidth) {
+    final tactics = _buildTacticsCard(scheme);
+    final chart = _buildWeekChartCard(scheme);
+
+    if (screenWidth < 500) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [tactics, const SizedBox(height: 12), chart],
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(flex: 4, child: tactics),
+        const SizedBox(width: 12),
+        Expanded(flex: 6, child: chart),
+      ],
+    );
+  }
+
+  Widget _buildTacticsCard(ColorScheme scheme) {
+    final todayPct = (_todayCompletionRate * 100).round();
+    final dayDeltaPct = _hasYesterday
+        ? (_todayVsYesterdayDelta * 100).round()
+        : null;
+    final weekDeltaPct = _hasPreviousWeek
+        ? (_weekVsPreviousDelta * 100).round()
+        : null;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.25),
         ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.bolt_rounded, size: 18, color: scheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Tactics',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            '$todayPct%',
+            style: TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w800,
+              color: scheme.primary,
+            ),
+          ),
+          Text(
+            'completed today',
+            style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 14),
+          _deltaRow(scheme, label: 'vs yesterday', deltaPct: dayDeltaPct),
+          const SizedBox(height: 8),
+          _deltaRow(scheme, label: 'vs last week', deltaPct: weekDeltaPct),
+        ],
       ),
     );
   }
 
-  // --- Weekly checkbox grid ---------------------------------------------
+  Widget _deltaRow(
+    ColorScheme scheme, {
+    required String label,
+    required int? deltaPct,
+  }) {
+    final isNA = deltaPct == null;
+    final isUp = !isNA && deltaPct > 0;
+    final isDown = !isNA && deltaPct < 0;
 
-  Widget _buildWeeklyGrid(ColorScheme scheme) {
+    final color = isNA
+        ? scheme.onSurfaceVariant
+        : (isUp
+              ? Colors.green.shade600
+              : (isDown ? Colors.redAccent.shade200 : scheme.onSurfaceVariant));
+
+    final icon = isNA
+        ? Icons.remove_rounded
+        : (isUp
+              ? Icons.arrow_upward_rounded
+              : (isDown ? Icons.arrow_downward_rounded : Icons.remove_rounded));
+
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 4),
+        Text(
+          isNA ? '—' : '${deltaPct.abs()}%',
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeekChartCard(ColorScheme scheme) {
+    const chartHeight = 130.0;
+    final barAreaHeight = chartHeight - 46;
+    final weeksToShow = _currentWeekIndex + 1;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.bar_chart_rounded, size: 18, color: scheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Weekly Progress',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: chartHeight,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: List.generate(weeksToShow, (i) {
+                final avg = _weekAverage(i);
+                final isCurrent = i == _currentWeekIndex;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${(avg * 100).round()}%',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Stack(
+                      alignment: Alignment.bottomCenter,
+                      children: [
+                        Container(
+                          width: 30,
+                          height: barAreaHeight,
+                          decoration: BoxDecoration(
+                            color: scheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                        Container(
+                          width: 30,
+                          height: math.max(
+                            avg > 0 ? 6 : 0,
+                            barAreaHeight * avg,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isCurrent
+                                ? scheme.primary
+                                : scheme.primary.withValues(alpha: 0.65),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'W${i + 1}',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: isCurrent
+                            ? FontWeight.w800
+                            : FontWeight.w500,
+                        color: isCurrent
+                            ? scheme.primary
+                            : scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- Weekly checkbox grid (task list) ----------------------------------
+
+  Widget _buildWeeklyGrid(
+    ColorScheme scheme,
+    double cellWidth,
+    double nameColWidth,
+  ) {
     final weeks = _weeks;
 
     return Row(
@@ -818,7 +787,7 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
       children: [
         // Fixed left column: goal names
         SizedBox(
-          width: _nameColWidth,
+          width: nameColWidth,
           child: Column(
             children: [
               SizedBox(height: _headerRowHeight * 2), // corner space
@@ -826,36 +795,60 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
                 Container(
                   height: _cellHeight,
                   alignment: Alignment.centerLeft,
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      top: BorderSide(
-                        color: scheme.outlineVariant.withValues(alpha: 0.2),
-                      ),
-                    ),
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  color: i.isEven
+                      ? Colors.transparent
+                      : scheme.surfaceContainerHigh.withValues(alpha: 0.4),
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          _goals[i].name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _goals[i].name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: scheme.onSurface,
+                              ),
+                            ),
+                            Text(
+                              '${(_goalCompletionRate(_goals[i]) * 100).round()}% overall',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       InkWell(
+                        borderRadius: BorderRadius.circular(20),
                         onTap: () => _editGoal(i),
-                        child: Icon(
-                          Icons.edit_outlined,
-                          size: 14,
-                          color: scheme.onSurfaceVariant,
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.edit_outlined,
+                            size: 14,
+                            color: scheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 6),
                       InkWell(
+                        borderRadius: BorderRadius.circular(20),
                         onTap: () => _removeGoal(i),
-                        child: Icon(Icons.close, size: 14, color: scheme.error),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 14,
+                            color: scheme.error,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -875,22 +868,23 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
                   children: weeks.asMap().entries.map((entry) {
                     final weekDays = entry.value;
                     return Container(
-                      width: _cellWidth * weekDays.length,
+                      width: cellWidth * weekDays.length,
                       height: _headerRowHeight,
                       alignment: Alignment.center,
+                      margin: const EdgeInsets.only(bottom: 2),
                       decoration: BoxDecoration(
-                        border: Border.all(
-                          color: scheme.outlineVariant.withValues(alpha: 0.25),
-                        ),
-                        color: scheme.surfaceContainerHighest.withValues(
-                          alpha: 0.4,
-                        ),
+                        color: scheme.secondaryContainer.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text(
-                        'Week ${entry.key + 1}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Week ${entry.key + 1}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: scheme.onSecondaryContainer,
+                          ),
                         ),
                       ),
                     );
@@ -901,70 +895,103 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
                   children: _allDays.map((day) {
                     final isToday = _dateKey(day) == _dateKey(_todayStart);
                     return Container(
-                      width: _cellWidth,
+                      width: cellWidth,
                       height: _headerRowHeight,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        border: Border.all(
-                          color: scheme.outlineVariant.withValues(alpha: 0.2),
-                        ),
                         color: isToday
-                            ? scheme.primary.withValues(alpha: 0.12)
+                            ? scheme.primary.withValues(alpha: 0.14)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(6),
+                        border: isToday
+                            ? Border.all(
+                                color: scheme.primary.withValues(alpha: 0.6),
+                              )
                             : null,
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            _dayLetter(day),
-                            style: const TextStyle(fontSize: 9),
-                          ),
-                          Text(
-                            '${day.day}',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: isToday
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              _dayLetter(day),
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: isToday
+                                    ? scheme.primary
+                                    : scheme.onSurfaceVariant,
+                                fontWeight: isToday
+                                    ? FontWeight.w700
+                                    : FontWeight.normal,
+                              ),
                             ),
-                          ),
-                        ],
+                            Text(
+                              '${day.day}',
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: isToday
+                                    ? FontWeight.w800
+                                    : FontWeight.normal,
+                                color: isToday
+                                    ? scheme.primary
+                                    : scheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   }).toList(),
                 ),
-                // Checkbox rows, one per goal
+                // Checkbox rows, one per goal (zebra striped to match name column)
                 for (var g = 0; g < _goals.length; g++)
                   Row(
                     children: _allDays.map((day) {
                       final key = _dateKey(day);
                       final done = _goals[g].completion[key] == true;
                       final isFuture = day.isAfter(_todayStart);
-                      return GestureDetector(
-                        onTap: () => _toggleCompletion(g, day),
-                        child: Container(
-                          width: _cellWidth,
-                          height: _cellHeight,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: scheme.outlineVariant.withValues(
-                                alpha: 0.2,
+                      final isToday = _dateKey(day) == _dateKey(_todayStart);
+
+                      return Container(
+                        width: cellWidth,
+                        height: _cellHeight,
+                        color: g.isEven
+                            ? Colors.transparent
+                            : scheme.surfaceContainerHigh.withValues(
+                                alpha: 0.4,
+                              ),
+                        alignment: Alignment.center,
+                        child: GestureDetector(
+                          onTap: () => _toggleCompletion(g, day),
+                          child: Container(
+                            width: cellWidth - 10,
+                            height: cellWidth - 10,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(7),
+                              color: done
+                                  ? scheme.primary
+                                  : (isFuture
+                                        ? scheme.surfaceContainerHighest
+                                              .withValues(alpha: 0.5)
+                                        : scheme.surfaceContainerHighest),
+                              border: Border.all(
+                                color: isToday
+                                    ? scheme.primary.withValues(alpha: 0.7)
+                                    : scheme.outlineVariant.withValues(
+                                        alpha: 0.4,
+                                      ),
+                                width: isToday ? 1.4 : 1,
                               ),
                             ),
-                          ),
-                          child: Icon(
-                            done
-                                ? Icons.check_box
-                                : Icons.check_box_outline_blank,
-                            size: 18,
-                            color: isFuture
-                                ? scheme.outlineVariant.withValues(alpha: 0.4)
-                                : (done
-                                      ? scheme.primary
-                                      : scheme.onSurfaceVariant.withValues(
-                                          alpha: 0.5,
-                                        )),
+                            child: done
+                                ? Icon(
+                                    Icons.check_rounded,
+                                    size: 15,
+                                    color: scheme.onPrimary,
+                                  )
+                                : null,
                           ),
                         ),
                       );
@@ -973,96 +1000,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
               ],
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  // --- Overall wellness (mood + sleep) chart -----------------------------
-
-  Widget _buildWellnessSection(ColorScheme scheme) {
-    final days = _allDays;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          height: _wellnessHeight,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: days.map((day) {
-                final key = _dateKey(day);
-                final entry = _wellness[key];
-                final isFuture = day.isAfter(_todayStart);
-                final sleepHeight = entry?.sleepHours != null
-                    ? math.min(1.0, entry!.sleepHours! / _maxSleepHours) *
-                          (_wellnessHeight - 30)
-                    : 0.0;
-                final moodOffset = entry?.mood != null
-                    ? (entry!.mood! / 5) * (_wellnessHeight - 30)
-                    : 0.0;
-
-                return GestureDetector(
-                  onTap: () => _openWellnessDialog(day),
-                  child: Container(
-                    width: _cellWidth,
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    child: Stack(
-                      alignment: Alignment.bottomCenter,
-                      children: [
-                        // Sleep hours bar
-                        Container(
-                          height: math.max(2, sleepHeight),
-                          decoration: BoxDecoration(
-                            color: isFuture
-                                ? scheme.outlineVariant.withValues(alpha: 0.25)
-                                : scheme.secondary.withValues(alpha: 0.55),
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(3),
-                            ),
-                          ),
-                        ),
-                        // Mood dot
-                        if (entry?.mood != null)
-                          Padding(
-                            padding: EdgeInsets.only(bottom: moodOffset),
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: Colors.green,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: scheme.surface,
-                                  width: 1,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            const Icon(Icons.circle, size: 8, color: Colors.green),
-            const SizedBox(width: 4),
-            const Text('Mood', style: TextStyle(fontSize: 12)),
-            const SizedBox(width: 16),
-            Container(
-              width: 14,
-              height: 3,
-              color: scheme.secondary.withValues(alpha: 0.55),
-            ),
-            const SizedBox(width: 4),
-            const Text('Hours of Sleep', style: TextStyle(fontSize: 12)),
-          ],
         ),
       ],
     );

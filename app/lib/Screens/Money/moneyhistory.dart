@@ -36,7 +36,9 @@ class _MoneyhistoryState extends State<Moneyhistory> {
 
   Future<void> loadHistory() async {
     final dir = await getApplicationDocumentsDirectory();
-    taskFile = File('${dir.path}/weekly_money.txt');
+    final myVaultDir = Directory('${dir.path}/MyVault');
+    await myVaultDir.create(recursive: true);
+    taskFile = File('${myVaultDir.path}/weekly_money.txt');
 
     if (!await taskFile.exists()) return;
 
