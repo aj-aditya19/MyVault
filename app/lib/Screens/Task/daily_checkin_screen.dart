@@ -58,8 +58,10 @@ class _DailyCheckinScreenState extends State<DailyCheckinScreen> {
 
   Future<void> _initFiles() async {
     final dir = await getApplicationDocumentsDirectory();
-    _checkinFile = File('${dir.path}/daily_checkin.txt');
-    _goalsFile = File('${dir.path}/constant_goals.txt');
+    final myVaultDir = Directory('${dir.path}/MyVault');
+    await myVaultDir.create(recursive: true);
+    _checkinFile = File('${myVaultDir.path}/daily_checkin.txt');
+    _goalsFile = File('${myVaultDir.path}/constant_goals.txt');
 
     if (!await _checkinFile.exists()) {
       await _checkinFile.create();

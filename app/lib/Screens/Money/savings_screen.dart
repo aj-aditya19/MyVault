@@ -35,7 +35,9 @@ class _SavingsScreenState extends State<SavingsScreen> {
   Future<void> loadSavings() async {
     try {
       final dir = await getApplicationDocumentsDirectory();
-      final file = File("${dir.path}/account_data.txt");
+      final myVaultDir = Directory('${dir.path}/MyVault');
+      await myVaultDir.create(recursive: true);
+      final file = File("${myVaultDir.path}/account_data.txt");
 
       if (!await file.exists()) return;
 

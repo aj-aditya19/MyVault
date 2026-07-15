@@ -266,7 +266,7 @@ class _DailyTaskState extends State<DailyTask> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 20),
           LayoutBuilder(
             builder: (context, constraints) {
               final isDesktop = constraints.maxWidth > 900;

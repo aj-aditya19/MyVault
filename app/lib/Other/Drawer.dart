@@ -44,9 +44,13 @@ class _MyDrawerState extends State<MyDrawer> {
           DrawerHeader(
             decoration: BoxDecoration(
               gradient: LinearGradient(
+                // colors: [
+                //   scheme.primary.withValues(alpha: 0.95),
+                //   scheme.tertiary.withValues(alpha: 0.95),
+                // ],
                 colors: [
-                  scheme.primary.withValues(alpha: 0.95),
-                  scheme.tertiary.withValues(alpha: 0.95),
+                  Color.fromARGB(255, 59, 159, 182),
+                  Color.fromARGB(255, 59, 159, 182),
                 ],
               ),
             ),
@@ -118,18 +122,7 @@ class _MyDrawerState extends State<MyDrawer> {
             },
             leading: const Icon(Icons.flag_circle_outlined),
           ),
-          ListTile(
-            title: const Text("Constant Goals"),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ConstantGoalsScreen(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 16),
+          Divider(),
           SwitchListTile.adaptive(
             secondary: Icon(
               widget.themeMode == ThemeMode.dark
@@ -144,7 +137,6 @@ class _MyDrawerState extends State<MyDrawer> {
               );
             },
           ),
-          const Divider(),
           ListTile(
             leading: const Icon(Icons.settings),
             title: const Text("Settings"),

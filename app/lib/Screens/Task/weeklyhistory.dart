@@ -35,7 +35,9 @@ class _WeeklyhistoryState extends State<Weeklyhistory> {
 
   Future<void> loadHistory() async {
     final dir = await getApplicationDocumentsDirectory();
-    taskFile = File('${dir.path}/weekly_tasks.txt');
+    final myVaultDir = Directory('${dir.path}/MyVault');
+    await myVaultDir.create(recursive: true);
+    taskFile = File('${myVaultDir.path}/weekly_tasks.txt');
 
     if (!await taskFile.exists()) return;
 

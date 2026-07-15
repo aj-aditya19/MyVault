@@ -1,6 +1,4 @@
 import 'package:app/Screens/Schedule.dart/Schedule_homepage.dart';
-import "package:app/core/services/notification_service.dart";
-import 'package:app/Screens/Statistics/statisticshome_screen.dart';
 import 'package:app/core/widgets/pin_gate.dart';
 import 'package:flutter/material.dart';
 
@@ -54,18 +52,6 @@ class Appbar extends StatelessWidget implements PreferredSizeWidget {
           tooltip: 'Switch Theme',
           onPressed: () => onThemeModeChanged(_nextThemeMode()),
           icon: Icon(_themeIcon()),
-        ),
-        IconButton(
-          tooltip: 'Statistics',
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const StatisticshomeScreen(),
-              ),
-            );
-          },
-          icon: const Icon(Icons.bar_chart_rounded),
         ),
         IconButton(
           tooltip: 'Schedule (locked)',

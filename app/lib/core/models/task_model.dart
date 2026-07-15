@@ -39,11 +39,6 @@ extension TaskPriorityX on TaskPriority {
   String get storageValue => name;
 }
 
-/// A single task inside the Daily Task Manager.
-///
-/// [dayKey] is the "yyyy-M-d" bucket the task lives under (kept compatible
-/// with the original DailyTask date-key format), so a task always belongs to
-/// the day it was created for, regardless of [dueDate].
 class TaskItem {
   final String id;
   final String title;

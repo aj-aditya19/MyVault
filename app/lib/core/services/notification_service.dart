@@ -182,15 +182,3 @@ class NotificationService {
 
   bool get supportsExactAlarms => !kIsWeb && Platform.isAndroid;
 }
-
-
-// Notification button
-// ElevatedButton(
-//   onPressed: () async {
-//     await NotificationService.instance.showNow(
-//       title: 'Test Notification',
-//       body: 'Agar yeh dikhe toh sab sahi hai',
-//     );
-//   },
-//   child: const Text('Test Notification Bhejo'),
-// ),

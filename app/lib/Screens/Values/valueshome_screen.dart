@@ -36,7 +36,9 @@ class _ValueshomeState extends State<Valueshome> {
 
   Future<void> inifile() async {
     final dir = await getApplicationDocumentsDirectory();
-    valuesFile = File('${dir.path}/values_file.txt');
+    final myVaultDir = Directory('${dir.path}/MyVault');
+    await myVaultDir.create(recursive: true);
+    valuesFile = File('${myVaultDir.path}/values_file.txt');
 
     if (!await valuesFile.exists()) {
       await valuesFile.create();
@@ -44,7 +46,6 @@ class _ValueshomeState extends State<Valueshome> {
     }
 
     String content = await valuesFile.readAsString();
-
     if (content.isEmpty) return;
     try {
       final decrypted = decrypt(content);

@@ -72,7 +72,9 @@ class _ProjecthomeState extends State<Projecthome> {
 
   Future<void> initFile() async {
     final dir = await getApplicationDocumentsDirectory();
-    projectFile = File('${dir.path}/project_ideas.txt');
+    final myVaultDir = Directory('${dir.path}/MyVault');
+    await myVaultDir.create(recursive: true);
+    projectFile = File('${myVaultDir.path}/project_ideas.txt');
 
     if (!await projectFile.exists()) {
       await projectFile.create();
