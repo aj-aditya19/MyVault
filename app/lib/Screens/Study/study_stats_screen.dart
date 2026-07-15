@@ -55,17 +55,31 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    String formatHours(double hours) {
+      final h = hours.floor();
+      final m = ((hours - h) * 60).round();
+      if (m == 0) {
+        return "$h hr";
+      }
+      return "$h hr $m min";
+    }
 
     final todayHours = _hoursOn(today);
-    final weekHours = List.generate(7, (i) => _hoursOn(today.subtract(Duration(days: i))))
-        .fold<double>(0, (a, b) => a + b);
-    final monthHours = _sessions
+    final weekHours = List.generate(
+      7,
+      (i) => _hoursOn(today.subtract(Duration(days: i))),
+    ).fold<double>(0, (a, b) => a + b);
+    final monthHours =
+        _sessions
             .where((s) => s.date.year == now.year && s.date.month == now.month)
             .fold<int>(0, (sum, s) => sum + s.durationMinutes) /
         60.0;
 
     // last 7 days, oldest -> newest, for the line chart
-    final last7Days = List.generate(7, (i) => today.subtract(Duration(days: 6 - i)));
+    final last7Days = List.generate(
+      7,
+      (i) => today.subtract(Duration(days: 6 - i)),
+    );
     final spots = List.generate(
       last7Days.length,
       (i) => FlSpot(i.toDouble(), _hoursOn(last7Days[i])),
@@ -76,14 +90,20 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
     // subject-wise breakdown, all time
     final subjectTotals = <String, int>{};
     for (final s in _sessions) {
-      subjectTotals[s.subject] = (subjectTotals[s.subject] ?? 0) + s.durationMinutes;
+      subjectTotals[s.subject] =
+          (subjectTotals[s.subject] ?? 0) + s.durationMinutes;
     }
     final sortedSubjects = subjectTotals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    final maxSubjectMinutes = sortedSubjects.isEmpty ? 1 : sortedSubjects.first.value;
+    final maxSubjectMinutes = sortedSubjects.isEmpty
+        ? 1
+        : sortedSubjects.first.value;
 
     // heatmap: last 70 days
-    final heatmapDays = List.generate(70, (i) => today.subtract(Duration(days: 69 - i)));
+    final heatmapDays = List.generate(
+      70,
+      (i) => today.subtract(Duration(days: 69 - i)),
+    );
 
     if (_sessions.isEmpty) {
       return Center(
@@ -148,12 +168,31 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
             decoration: BoxDecoration(
               color: scheme.surface.withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.25)),
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: 0.25),
+              ),
             ),
             child: LineChart(
               LineChartData(
                 minY: 0,
                 maxY: maxY,
+
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipItems: (touchedSpots) {
+                      return touchedSpots.map((spot) {
+                        return LineTooltipItem(
+                          formatHours(spot.y),
+                          TextStyle(
+                            color: scheme.onPrimary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
+                ),
+
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
@@ -184,8 +223,11 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: Text(
-                            dayLabels[last7Days[idx].weekday - 1],
-                            style: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant),
+                            " ${dayLabels[last7Days[idx].weekday - 1]}",
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: scheme.onSurfaceVariant,
+                            ),
                           ),
                         );
                       },
@@ -209,6 +251,48 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
             ),
           ),
           const SizedBox(height: 20),
+          const SectionHeading(
+            title: 'Productivity Heatmap',
+            subtitle: 'Last 70 days',
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: scheme.surface.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: 0.25),
+              ),
+            ),
+            child: Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: heatmapDays.map((day) {
+                final minutes = _minutesOn(day);
+                final color = minutes <= 0
+                    ? scheme.surfaceContainerHighest
+                    : minutes < 30
+                    ? scheme.primary.withValues(alpha: 0.25)
+                    : minutes < 60
+                    ? scheme.primary.withValues(alpha: 0.45)
+                    : minutes < 120
+                    ? scheme.primary.withValues(alpha: 0.7)
+                    : scheme.primary;
+                return Tooltip(
+                  message: '${day.day}/${day.month}: ${minutes.toInt()} min',
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
           const SectionHeading(title: 'Subject-wise breakdown'),
           const SizedBox(height: 10),
           Container(
@@ -216,7 +300,9 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
             decoration: BoxDecoration(
               color: scheme.surface.withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.25)),
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: 0.25),
+              ),
             ),
             child: Column(
               children: sortedSubjects.map((entry) {
@@ -230,9 +316,12 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w600)),
                           Text(
-                            '${hours.toStringAsFixed(1)}h',
+                            entry.key,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                            '${formatHours(hours)}',
                             style: TextStyle(color: scheme.onSurfaceVariant),
                           ),
                         ],
@@ -254,46 +343,6 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          const SectionHeading(
-            title: 'Productivity Heatmap',
-            subtitle: 'Last 70 days',
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: scheme.surface.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.25)),
-            ),
-            child: Wrap(
-              spacing: 4,
-              runSpacing: 4,
-              children: heatmapDays.map((day) {
-                final minutes = _minutesOn(day);
-                final color = minutes <= 0
-                    ? scheme.surfaceContainerHighest
-                    : minutes < 30
-                        ? scheme.primary.withValues(alpha: 0.25)
-                        : minutes < 60
-                            ? scheme.primary.withValues(alpha: 0.45)
-                            : minutes < 120
-                                ? scheme.primary.withValues(alpha: 0.7)
-                                : scheme.primary;
-                return Tooltip(
-                  message: '${day.day}/${day.month}: ${minutes.toInt()} min',
-                  child: Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
           const SizedBox(height: 40),
         ],
       ),

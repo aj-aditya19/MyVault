@@ -18,36 +18,45 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _AgendaItem {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
+// class _AgendaItem {
+//   final String title;
+//   final String subtitle;
+//   final IconData icon;
+//   final Color color;
 
-  const _AgendaItem({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.color,
-  });
-}
+//   const _AgendaItem({
+//     required this.title,
+//     required this.subtitle,
+//     required this.icon,
+//     required this.color,
+//   });
+// }
 
 class _DashboardScreenState extends State<DashboardScreen> {
   bool _loading = true;
   int _completedToday = 0;
+  String formatHours(double hours) {
+    final h = hours.floor();
+    final m = ((hours - h) * 60).round();
+    if (m == 0) {
+      return "$h hr";
+    }
+    return "${h}hr ${m}m";
+  }
+
   int _pendingToday = 0;
   double _weeklyCompletionRate = 0;
   double _studyHoursThisWeek = 0;
   // List<_AgendaItem> _agenda = [];
-  static const List<String> _weekDays = [
-    'Thurs',
-    'Fri',
-    'Sat',
-    'Sun',
-    'Mon',
-    'Tues',
-    'Wed',
-  ];
+  // static const List<String> _weekDays = [
+  //   'Thurs',
+  //   'Fri',
+  //   'Sat',
+  //   'Sun',
+  //   'Mon',
+  //   'Tues',
+  //   'Wed',
+  // ];
 
   @override
   void initState() {
@@ -93,7 +102,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
 
-      // crude "this week" check: was this day's key within the last 7 days?
       final parts = key.split('-');
       if (parts.length == 3) {
         final y = int.tryParse(parts[0]);
@@ -138,19 +146,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _studyHoursThisWeek = minutes / 60.0;
   }
 
-  DateTime? _dateForDayName(String name) {
-    const order = _weekDays;
-    final today = DateTime.now();
-    final diff = (today.weekday - DateTime.thursday) % 7;
-    final startOfWeek = DateTime(
-      today.year,
-      today.month,
-      today.day,
-    ).subtract(Duration(days: diff));
-    final index = order.indexOf(name);
-    if (index == -1) return null;
-    return startOfWeek.add(Duration(days: index));
-  }
+  // DateTime? _dateForDayName(String name) {
+  //   const order = _weekDays;
+  //   final today = DateTime.now();
+  //   final diff = (today.weekday - DateTime.thursday) % 7;
+  //   final startOfWeek = DateTime(
+  //     today.year,
+  //     today.month,
+  //     today.day,
+  //   ).subtract(Duration(days: diff));
+  //   final index = order.indexOf(name);
+  //   if (index == -1) return null;
+  //   return startOfWeek.add(Duration(days: index));
+  // }
 
   // Future<void> _loadScheduleAgenda() async {
   //   final raw = await StorageService.readLegacyFile('weekly_schedule.txt');
@@ -205,20 +213,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   //   _agenda = agenda;
   // }
 
-  Color _colorForCategory(String name) {
-    switch (name) {
-      case 'study':
-        return Color(0xFF1E88E5);
-      case 'project':
-        return Color(0xFF8E24AA);
-      case 'personal':
-        return Color(0xFF00897B);
-      case 'fitness':
-        return Color(0xFFEF6C00);
-      default:
-        return Color(0xFF607D8B);
-    }
-  }
+  // Color _colorForCategory(String name) {
+  //   switch (name) {
+  //     case 'study':
+  //       return Color(0xFF1E88E5);
+  //     case 'project':
+  //       return Color(0xFF8E24AA);
+  //     case 'personal':
+  //       return Color(0xFF00897B);
+  //     case 'fitness':
+  //       return Color(0xFFEF6C00);
+  //     default:
+  //       return Color(0xFF607D8B);
+  //   }
+  // }
 
   Future<void> _openLocked(String name, Widget Function() builder) async {
     final unlocked = await ensureSectionUnlocked(context, sectionName: name);
@@ -592,7 +600,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                       Text(
-                        '${_studyHoursThisWeek.toStringAsFixed(1)}h',
+                        '${formatHours(_studyHoursThisWeek)}',
                         style: TextStyle(
                           fontSize: 30,
                           color: scheme.onSurfaceVariant,
