@@ -169,24 +169,24 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
     }
   }
 
-  int _weekdayForName(String name) {
-    switch (name) {
-      case 'Thurs':
-        return DateTime.thursday;
-      case 'Fri':
-        return DateTime.friday;
-      case 'Sat':
-        return DateTime.saturday;
-      case 'Sun':
-        return DateTime.sunday;
-      case 'Mon':
-        return DateTime.monday;
-      case 'Tues':
-        return DateTime.tuesday;
-      default:
-        return DateTime.wednesday;
-    }
-  }
+  // int _weekdayForName(String name) {
+  //   switch (name) {
+  //     case 'Thurs':
+  //       return DateTime.thursday;
+  //     case 'Fri':
+  //       return DateTime.friday;
+  //     case 'Sat':
+  //       return DateTime.saturday;
+  //     case 'Sun':
+  //       return DateTime.sunday;
+  //     case 'Mon':
+  //       return DateTime.monday;
+  //     case 'Tues':
+  //       return DateTime.tuesday;
+  //     default:
+  //       return DateTime.wednesday;
+  //   }
+  // }
 
   DateTime _dateForDayName(String name) {
     final today = DateTime.now();
@@ -258,17 +258,6 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
     final hourText = hour.toString().padLeft(2, '0');
     final minuteText = minute.toString().padLeft(2, '0');
     return '$hourText:$minuteText';
-  }
-
-  String _formatCompactTime(int minuteOfDay) {
-    final hour = (minuteOfDay ~/ 60) % 24;
-    final minute = minuteOfDay % 60;
-    final period = hour >= 12 ? 'PM' : 'AM';
-    final hour12 = hour % 12 == 0 ? 12 : hour % 12;
-    if (minute == 0) {
-      return '$hour12 $period';
-    }
-    return '$hour12:${minute.toString().padLeft(2, '0')} $period';
   }
 
   String _formatHourLabel(int minuteOfDay) {

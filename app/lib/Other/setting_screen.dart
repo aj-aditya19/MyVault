@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:app/Other/license_screen.dart';
 import 'package:app/core/services/notification_service.dart';
 import 'package:app/core/services/pin_service.dart';
+import 'package:app/core/services/sync_manager.dart';
 import 'package:app/core/widgets/pin_gate.dart';
 
 class SettingScreen extends StatefulWidget {
@@ -69,12 +70,12 @@ class _SettingScreenState extends State<SettingScreen> {
   }
 
   Future<void> _removePin() async {
+    final pinService = context.read<PinService>();
     final verified = await ensureSectionUnlocked(
       context,
       sectionName: 'Settings',
     );
     if (!verified) return;
-    final pinService = context.read<PinService>();
     await pinService.removePin();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -252,6 +253,19 @@ class _SettingScreenState extends State<SettingScreen> {
                     );
                   },
                 ),
+                if (SyncManager.isSignedIn) ...[
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.logout),
+                    title: const Text('Sign out'),
+                    subtitle: const Text('Logout from your synced account'),
+                    onTap: () async {
+                      await SyncManager.signOut();
+                      if (!context.mounted) return;
+                      Navigator.of(context).popUntil((route) => route.isFirst);
+                    },
+                  ),
+                ],
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.description_outlined),

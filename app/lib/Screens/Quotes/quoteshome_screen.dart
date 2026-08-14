@@ -146,7 +146,6 @@ class _QuoteshomeState extends State<Quoteshome> {
         title: const Text("Quotes"),
         backgroundColor: Colors.transparent,
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

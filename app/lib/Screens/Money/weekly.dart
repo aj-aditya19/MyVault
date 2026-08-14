@@ -297,10 +297,10 @@ class _WeeklyState extends State<Weekly> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    var color = [
-      scheme.primary.withValues(alpha: 0.95),
-      scheme.tertiary.withValues(alpha: 0.95),
-    ];
+    // var color = [
+    //   scheme.primary.withValues(alpha: 0.95),
+    //   scheme.tertiary.withValues(alpha: 0.95),
+    // ];
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       floatingActionButton: FloatingActionButton(
