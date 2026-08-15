@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:app/core/services/storage_service.dart';
 
 class Quoteshome extends StatefulWidget {
   const Quoteshome({super.key});
@@ -14,74 +12,38 @@ class Quoteshome extends StatefulWidget {
 class _QuoteshomeState extends State<Quoteshome> {
   final TextEditingController controller = TextEditingController();
   List<String> quotesList = [];
-  late File quotesFile;
 
-  late final encrypt.Key key;
-  late final encrypt.Encrypter encrypter;
-
-  String encryptData(String data) {
-    final iv = encrypt.IV.fromSecureRandom(16);
-    final encrypted = encrypter.encrypt(data, iv: iv);
-    final combined = iv.bytes + encrypted.bytes;
-    return base64Encode(combined);
-  }
-
-  String decrypt(String base64Data) {
-    final combined = base64Decode(base64Data);
-    final iv = encrypt.IV(combined.sublist(0, 16));
-    final encryptedBytes = combined.sublist(16);
-    final encrypted = encrypt.Encrypted(encryptedBytes);
-    return encrypter.decrypt(encrypted, iv: iv);
-  }
+  static const String _boxName = 'quotes_file';
 
   Future<void> inifile() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final myVaultDir = Directory('${dir.path}/MyVault');
-    await myVaultDir.create(recursive: true);
-    quotesFile = File('${myVaultDir.path}/quotes_file.txt');
+    List<dynamic> decoded = await StorageService.read<List<dynamic>>(
+      _boxName,
+      <dynamic>[],
+    );
 
-    if (!await quotesFile.exists()) {
-      await quotesFile.create();
-      await quotesFile.writeAsString(encryptData(jsonEncode([])));
-    }
-
-    String content = await quotesFile.readAsString();
-
-    if (content.isEmpty) return;
-    try {
-      final decrypted = decrypt(content);
-      List decodedData = jsonDecode(decrypted);
-      setState(() {
-        quotesList = List<String>.from(decodedData);
-      });
-    } catch (e) {
-      print("Data is not encrypted. Encrypting old data now....");
-      try {
-        List decodedData = jsonDecode(content);
-        String encrypted = encryptData(jsonEncode(decodedData));
-        await quotesFile.writeAsString(encrypted);
-
-        setState(() {
-          quotesList = List<String>.from(decodedData);
-        });
-      } catch (e2) {
-        print("File is corrupted : $e2");
-        quotesList = [];
+    if (decoded.isEmpty) {
+      final dir = await getApplicationDocumentsDirectory();
+      final legacy = await StorageService.readLegacyPath(
+        '${dir.path}/MyVault/quotes_file.txt',
+      );
+      if (legacy is List && legacy.isNotEmpty) {
+        decoded = legacy;
+        await StorageService.write(_boxName, decoded);
       }
     }
+
+    setState(() {
+      quotesList = List<String>.from(decoded);
+    });
   }
 
   Future<void> saveQuotes() async {
-    final jsonString = jsonEncode(quotesList);
-    final encryptedData = encryptData(jsonString);
-    await quotesFile.writeAsString(encryptedData);
+    await StorageService.write(_boxName, quotesList);
   }
 
   @override
   void initState() {
     super.initState();
-    key = encrypt.Key.fromUtf8('my 32 length key................');
-    encrypter = encrypt.Encrypter(encrypt.AES(key));
     inifile();
   }
 

@@ -3,8 +3,6 @@ import 'package:uuid/uuid.dart';
 
 import 'package:app/core/models/task_model.dart';
 
-/// Shows the add/edit task form as a modal bottom sheet. Returns the new
-/// or updated [TaskItem], or null if the person cancelled.
 Future<TaskItem?> showTaskFormSheet(
   BuildContext context, {
   TaskItem? existing,
@@ -46,7 +44,9 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
     super.initState();
     final existing = widget.existing;
     _titleController = TextEditingController(text: existing?.title ?? '');
-    _descriptionController = TextEditingController(text: existing?.description ?? '');
+    _descriptionController = TextEditingController(
+      text: existing?.description ?? '',
+    );
     _tagController = TextEditingController();
     _priority = existing?.priority ?? TaskPriority.medium;
     _dueDate = existing?.dueDate;
@@ -74,7 +74,8 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
   }
 
   Future<void> _pickReminderTime() async {
-    final base = _reminderAt ?? _dueDate ?? DateTime.now().add(const Duration(hours: 1));
+    final base =
+        _reminderAt ?? _dueDate ?? DateTime.now().add(const Duration(hours: 1));
     final date = await showDatePicker(
       context: context,
       initialDate: base,
@@ -90,7 +91,13 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
     if (time == null) return;
 
     setState(() {
-      _reminderAt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+      _reminderAt = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
     });
   }
 
@@ -167,7 +174,9 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
           return Container(
             decoration: BoxDecoration(
               color: scheme.surface,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
             ),
             child: ListView(
               controller: scrollController,
@@ -186,7 +195,10 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                 ),
                 Text(
                   isEditing ? 'Edit Task' : 'New Task',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -207,7 +219,13 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text('Priority', style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13)),
+                Text(
+                  'Priority',
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 SegmentedButton<TaskPriority>(
                   segments: TaskPriority.values
@@ -215,7 +233,11 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                         (p) => ButtonSegment(
                           value: p,
                           label: Text(p.label),
-                          icon: Icon(Icons.flag_rounded, color: p.color, size: 16),
+                          icon: Icon(
+                            Icons.flag_rounded,
+                            color: p.color,
+                            size: 16,
+                          ),
                         ),
                       )
                       .toList(),
@@ -232,7 +254,9 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                         onPressed: _pickDueDate,
                         icon: const Icon(Icons.event_outlined, size: 18),
                         label: Text(
-                          _dueDate == null ? 'Set due date' : _formatDate(_dueDate!),
+                          _dueDate == null
+                              ? 'Set due date'
+                              : _formatDate(_dueDate!),
                         ),
                       ),
                     ),
@@ -258,7 +282,9 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                     setState(() {
                       _reminderEnabled = value;
                       if (value && _reminderAt == null) {
-                        _reminderAt = _dueDate ?? DateTime.now().add(const Duration(hours: 1));
+                        _reminderAt =
+                            _dueDate ??
+                            DateTime.now().add(const Duration(hours: 1));
                       }
                     });
                   },
@@ -273,7 +299,13 @@ class _TaskFormSheetState extends State<_TaskFormSheet> {
                     ),
                   ),
                 const SizedBox(height: 12),
-                Text('Tags', style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13)),
+                Text(
+                  'Tags',
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _tagController,

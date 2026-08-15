@@ -68,9 +68,6 @@ class StorageService {
         'updatedBy': 'local-device',
       };
 
-      // -----------------------------
-      // 1. Read local data
-      // -----------------------------
       if (await file.exists()) {
         final content = await file.readAsString();
 
@@ -80,8 +77,6 @@ class StorageService {
             final decoded = jsonDecode(decrypted);
 
             if (decoded is Map && decoded.containsKey('value')) {
-              // IMPORTANT:
-              // Preserve updatedAt and updatedBy.
               localEnvelope = Map<String, dynamic>.from(decoded);
             } else {
               localEnvelope = {
@@ -116,9 +111,6 @@ class StorageService {
         }
       }
 
-      // -----------------------------
-      // 2. Compare with Firebase
-      // -----------------------------
       if (SyncManager.isSignedIn) {
         final remoteSnapshot = await SyncManager.pullRemoteSnapshot(boxName);
 
@@ -145,9 +137,6 @@ class StorageService {
         }
       }
 
-      // -----------------------------
-      // 3. Return local data
-      // -----------------------------
       return (localEnvelope['value'] ?? fallback) as T;
     } catch (_) {
       return fallback;
@@ -173,9 +162,7 @@ class StorageService {
       };
 
       await file.writeAsString(encryptData(jsonEncode(localEnvelope)));
-    } catch (_) {
-      // Ignore individual box failures.
-    }
+    } catch (_) {}
   }
 
   static int _updatedAtOf(Map<String, dynamic> envelope) {
@@ -251,9 +238,7 @@ class StorageService {
 
         final normalized = normalizeStoredValue(decoded, fallback: decoded);
         await SyncManager.syncLocalBox(boxName, normalized);
-      } catch (_) {
-        // Continue syncing other boxes even if one file is unreadable.
-      }
+      } catch (_) {}
     }
   }
 
@@ -297,7 +282,6 @@ class StorageService {
         }
       }
 
-      // No local copy → download Firebase version.
       if (localEnvelope == null) {
         await file.writeAsString(encryptData(jsonEncode(remoteEnvelope)));
         return;
@@ -310,9 +294,7 @@ class StorageService {
 
         await file.writeAsString(encryptData(jsonEncode(mergedMap)));
       }
-    } catch (_) {
-      // Ignore individual box errors.
-    }
+    } catch (_) {}
   }
 
   static Future<List<Map<String, dynamic>>> readList(String boxName) async {
@@ -334,6 +316,22 @@ class StorageService {
     try {
       final dir = await getApplicationDocumentsDirectory();
       final file = File('${dir.path}/$fileName');
+      if (!await file.exists()) return null;
+      final content = await file.readAsString();
+      if (content.isEmpty) return null;
+      try {
+        return jsonDecode(decryptData(content));
+      } catch (_) {
+        return jsonDecode(content);
+      }
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<dynamic> readLegacyPath(String fullPath) async {
+    try {
+      final file = File(fullPath);
       if (!await file.exists()) return null;
       final content = await file.readAsString();
       if (content.isEmpty) return null;

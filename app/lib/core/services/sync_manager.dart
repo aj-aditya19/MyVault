@@ -19,24 +19,39 @@ class SyncManager {
   static Future<void> initialize() async {
     if (_initialized) return;
 
+    print('SYNC: initialize() started');
+
     try {
+      print('SYNC: Firebase.apps = ${Firebase.apps.length}');
+
       if (Firebase.apps.isEmpty) {
+        print('SYNC: Calling Firebase.initializeApp()');
+
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
         );
+
+        print('SYNC: Firebase.initializeApp() completed');
       }
+
       _firebaseReady = true;
-    } catch (_) {
-      // Firebase not supported on this platform (e.g. Windows) or config missing.
-      // App keeps working fully offline/local.
+      print('SYNC: Firebase READY = $_firebaseReady');
+    } catch (e, stackTrace) {
+      print('SYNC: Firebase initialization FAILED');
+      print('SYNC ERROR: $e');
+      print(stackTrace);
+
       _firebaseReady = false;
     }
 
     _initialized = true;
+    print('SYNC: initialize() completed, ready=$_firebaseReady');
+
     _connectivity.onConnectivityChanged.listen((results) async {
       final hasConnection = results.any(
         (result) => result != ConnectivityResult.none,
       );
+
       if (_firebaseReady && hasConnection && _auth.currentUser != null) {
         await syncPendingChanges();
       }
@@ -55,7 +70,6 @@ class SyncManager {
     String password,
   ) async {
     if (!_firebaseReady) {
-      print('Firebase is not initialized.');
       return false;
     }
 
@@ -74,6 +88,7 @@ class SyncManager {
       return false;
     } catch (e) {
       print('Unexpected Login Error: $e');
+
       return false;
     }
   }
@@ -163,41 +178,6 @@ class SyncManager {
     }
   }
 
-  // static Future<void> syncAllBoxes() async {
-  //   if (!SyncManager.isSignedIn) return;
-
-  //   try {
-  //     await syncAllLocalBoxesToCloud();
-
-  //     // 2. Download remote boxes that are missing locally.
-  //     await SyncManager.pullAllRemoteBoxesToLocal();
-  //   } catch (_) {
-  //     // Sync should never crash the app.
-  //   }
-  // }
-
-  // static Future<void> pullAllRemoteBoxesToLocal() async {
-  //   if (!_initialized || currentUserId == null) return;
-
-  //   try {
-  //     final snapshot = await _firestore
-  //         .collection('userData')
-  //         .doc(currentUserId)
-  //         .collection('boxes')
-  //         .get();
-
-  //     for (final doc in snapshot.docs) {
-  //       final data = doc.data();
-
-  //       if (data.isEmpty) continue;
-
-  //       await _saveRemoteBoxLocally(doc.id, data);
-  //     }
-  //   } catch (_) {
-  //     // Ignore sync errors.
-  //   }
-  // }
-
   static String? get currentUserId {
     if (!_firebaseReady) return null;
     return _auth.currentUser?.uid;
@@ -257,9 +237,7 @@ class SyncManager {
           Map<String, dynamic>.from(data),
         );
       }
-    } catch (_) {
-      // Ignore sync errors.
-    }
+    } catch (_) {}
   }
 
   static Future<Map<String, dynamic>?> pullRemoteSnapshot(

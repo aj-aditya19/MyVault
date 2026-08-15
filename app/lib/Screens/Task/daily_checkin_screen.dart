@@ -1,9 +1,6 @@
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:app/core/services/storage_service.dart';
 
 class DailyCheckinScreen extends StatefulWidget {
   const DailyCheckinScreen({super.key});
@@ -19,14 +16,12 @@ class _DailyCheckinScreenState extends State<DailyCheckinScreen> {
   final TextEditingController _lossController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
 
-  late File _checkinFile;
-  late File _goalsFile;
-  late encrypt.Key _key;
-  late encrypt.Encrypter _encrypter;
-
   Map<String, dynamic> _allCheckins = {};
   List<String> _constantGoals = [];
   Map<String, bool> _goalStatus = {};
+
+  static const String _checkinBox = 'daily_checkin';
+  static const String _goalsBox = 'constant_goals';
 
   String get _today {
     final now = DateTime.now();
@@ -36,44 +31,7 @@ class _DailyCheckinScreenState extends State<DailyCheckinScreen> {
   @override
   void initState() {
     super.initState();
-    _key = encrypt.Key.fromUtf8('my 32 length key................');
-    _encrypter = encrypt.Encrypter(encrypt.AES(_key));
-    _initFiles();
-  }
-
-  String _encryptData(String data) {
-    final iv = encrypt.IV.fromSecureRandom(16);
-    final encrypted = _encrypter.encrypt(data, iv: iv);
-    final combined = iv.bytes + encrypted.bytes;
-    return base64Encode(combined);
-  }
-
-  String _decryptData(String base64Data) {
-    final combined = base64Decode(base64Data);
-    final iv = encrypt.IV(combined.sublist(0, 16));
-    final encryptedBytes = combined.sublist(16);
-    final encrypted = encrypt.Encrypted(encryptedBytes);
-    return _encrypter.decrypt(encrypted, iv: iv);
-  }
-
-  Future<void> _initFiles() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final myVaultDir = Directory('${dir.path}/MyVault');
-    await myVaultDir.create(recursive: true);
-    _checkinFile = File('${myVaultDir.path}/daily_checkin.txt');
-    _goalsFile = File('${myVaultDir.path}/constant_goals.txt');
-
-    if (!await _checkinFile.exists()) {
-      await _checkinFile.create();
-      await _checkinFile.writeAsString(_encryptData(jsonEncode({})));
-    }
-
-    if (!await _goalsFile.exists()) {
-      await _goalsFile.create();
-      await _goalsFile.writeAsString(_encryptData(jsonEncode(<String>[])));
-    }
-
-    await _loadData();
+    _loadData();
   }
 
   Future<void> _loadData() async {
@@ -83,11 +41,10 @@ class _DailyCheckinScreenState extends State<DailyCheckinScreen> {
 
   Future<void> _loadConstantGoals() async {
     try {
-      final content = await _goalsFile.readAsString();
-      if (content.isEmpty) return;
-
-      final decrypted = _decryptData(content);
-      final decoded = jsonDecode(decrypted);
+      final decoded = await StorageService.read<dynamic>(
+        _goalsBox,
+        <dynamic>[],
+      );
       if (decoded is List) {
         _constantGoals = decoded.map((e) => e.toString()).toList();
       }
@@ -98,14 +55,22 @@ class _DailyCheckinScreenState extends State<DailyCheckinScreen> {
 
   Future<void> _loadCheckin() async {
     try {
-      final content = await _checkinFile.readAsString();
-      if (content.isEmpty) return;
+      Map<String, dynamic> allCheckins = await StorageService.readMap(
+        _checkinBox,
+      );
 
-      final decrypted = _decryptData(content);
-      final decoded = jsonDecode(decrypted);
-      if (decoded is Map<String, dynamic>) {
-        _allCheckins = decoded;
+      if (allCheckins.isEmpty) {
+        final dir = await getApplicationDocumentsDirectory();
+        final legacy = await StorageService.readLegacyPath(
+          '${dir.path}/MyVault/daily_checkin.txt',
+        );
+        if (legacy is Map && legacy.isNotEmpty) {
+          allCheckins = Map<String, dynamic>.from(legacy);
+          await StorageService.write(_checkinBox, allCheckins);
+        }
       }
+
+      _allCheckins = allCheckins;
 
       final todayData = _allCheckins[_today] as Map<String, dynamic>?;
       if (todayData != null) {
@@ -141,7 +106,7 @@ class _DailyCheckinScreenState extends State<DailyCheckinScreen> {
       'saved_at': DateTime.now().toIso8601String(),
     };
 
-    await _checkinFile.writeAsString(_encryptData(jsonEncode(_allCheckins)));
+    await StorageService.write(_checkinBox, _allCheckins);
 
     if (!mounted) return;
     ScaffoldMessenger.of(

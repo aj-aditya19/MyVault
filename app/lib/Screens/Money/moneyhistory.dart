@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:app/core/services/storage_service.dart';
 
 class Moneyhistory extends StatefulWidget {
   const Moneyhistory({super.key});
@@ -14,47 +11,18 @@ class Moneyhistory extends StatefulWidget {
 class _MoneyhistoryState extends State<Moneyhistory> {
   List<Map<String, dynamic>> weeks = [];
 
-  late File taskFile;
-  late encrypt.Key key;
-  late encrypt.Encrypter encrypter;
-
   @override
   void initState() {
     super.initState();
-    key = encrypt.Key.fromUtf8('my 32 length key................');
-    encrypter = encrypt.Encrypter(encrypt.AES(key));
     loadHistory();
   }
 
-  String decrypt(String base64Data) {
-    final combined = base64Decode(base64Data);
-    final iv = encrypt.IV(combined.sublist(0, 16));
-    final encryptedBytes = combined.sublist(16);
-    final encrypted = encrypt.Encrypted(encryptedBytes);
-    return encrypter.decrypt(encrypted, iv: iv);
-  }
-
   Future<void> loadHistory() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final myVaultDir = Directory('${dir.path}/MyVault');
-    await myVaultDir.create(recursive: true);
-    taskFile = File('${myVaultDir.path}/weekly_money.txt');
-
-    if (!await taskFile.exists()) return;
-
     try {
-      String content = await taskFile.readAsString();
-
-      if (content.isEmpty) return;
-
-      final decrypted = decrypt(content);
-      final decoded = jsonDecode(decrypted);
-
-      if (decoded is List) {
-        setState(() {
-          weeks = List<Map<String, dynamic>>.from(decoded.reversed);
-        });
-      }
+      final data = await StorageService.readList('weekly_money');
+      setState(() {
+        weeks = data.reversed.toList();
+      });
     } catch (e) {
       print("Error: $e");
     }

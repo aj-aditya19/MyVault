@@ -1,9 +1,7 @@
 import 'package:app/Screens/Task/weeklyhistory.dart';
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'dart:io';
-import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:path_provider/path_provider.dart';
+import 'package:app/core/services/storage_service.dart';
 
 class WeeklyTask extends StatefulWidget {
   const WeeklyTask({super.key});
@@ -16,25 +14,8 @@ class _WeeklyTaskState extends State<WeeklyTask> {
   final TextEditingController controller = TextEditingController();
 
   Map<String, List<Map<String, dynamic>>> allWeeklyTasks = {};
-  late File weeklyFile;
 
-  late final encrypt.Key key;
-  late final encrypt.Encrypter encrypter;
-
-  String encryptData(String data) {
-    final iv = encrypt.IV.fromSecureRandom(16);
-    final encrypted = encrypter.encrypt(data, iv: iv);
-    final combined = iv.bytes + encrypted.bytes;
-    return base64Encode(combined);
-  }
-
-  String decrypt(String base64Data) {
-    final combined = base64Decode(base64Data);
-    final iv = encrypt.IV(combined.sublist(0, 16));
-    final encryptedBytes = combined.sublist(16);
-    final encrypted = encrypt.Encrypted(encryptedBytes);
-    return encrypter.decrypt(encrypted, iv: iv);
-  }
+  static const String _boxName = 'weekly_tasks';
 
   String get currentWeekKey {
     DateTime now = DateTime.now();
@@ -62,73 +43,40 @@ class _WeeklyTaskState extends State<WeeklyTask> {
   }
 
   Future<void> initFile() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final myVaultDir = Directory('${dir.path}/MyVault');
-    await myVaultDir.create(recursive: true);
-    weeklyFile = File('${myVaultDir.path}/weekly_tasks.txt');
+    Map<String, dynamic> decoded = await StorageService.readMap(_boxName);
 
-    if (!await weeklyFile.exists()) {
-      await weeklyFile.create();
-      await weeklyFile.writeAsString(encryptData(jsonEncode({})));
-    }
-
-    String content = await weeklyFile.readAsString();
-
-    if (content.isEmpty) return;
-    try {
-      final decrypted = decrypt(content);
-      Map<String, dynamic> decoded = jsonDecode(decrypted);
-      decoded = jsonDecode(decrypted);
-      setState(() {
-        allWeeklyTasks = decoded.map<String, List<Map<String, dynamic>>>(
-          (key, value) => MapEntry(
-            key,
-            (value as List)
-                .map<Map<String, dynamic>>(
-                  (item) => {"title": item["title"], "isDone": item["isDone"]},
-                )
-                .toList(),
-          ),
-        );
-      });
-    } catch (e) {
-      print("Data is not encrypted. Encrypting old data now....");
-      try {
-        Map<String, dynamic> decoded = jsonDecode(content);
-        String encrypted = encryptData(jsonEncode(decoded));
-        await weeklyFile.writeAsString(encrypted);
-
-        setState(() {
-          allWeeklyTasks = decoded.map<String, List<Map<String, dynamic>>>(
-            (key, value) => MapEntry(
-              key,
-              (value as List)
-                  .map<Map<String, dynamic>>(
-                    (item) => {
-                      "title": item["title"],
-                      "isDone": item["isDone"],
-                    },
-                  )
-                  .toList(),
-            ),
-          );
-        });
-      } catch (e2) {
-        print("File is corrupted : $e2");
-        allWeeklyTasks = {};
+    if (decoded.isEmpty) {
+      final dir = await getApplicationDocumentsDirectory();
+      final legacy = await StorageService.readLegacyPath(
+        '${dir.path}/MyVault/weekly_tasks.txt',
+      );
+      if (legacy is Map && legacy.isNotEmpty) {
+        decoded = Map<String, dynamic>.from(legacy);
+        await StorageService.write(_boxName, decoded);
       }
     }
+
+    setState(() {
+      allWeeklyTasks = decoded.map<String, List<Map<String, dynamic>>>(
+        (key, value) => MapEntry(
+          key,
+          (value as List)
+              .map<Map<String, dynamic>>(
+                (item) => {"title": item["title"], "isDone": item["isDone"]},
+              )
+              .toList(),
+        ),
+      );
+    });
   }
 
   Future<void> saveTasks() async {
-    await weeklyFile.writeAsString(jsonEncode(allWeeklyTasks));
+    await StorageService.write(_boxName, allWeeklyTasks);
   }
 
   @override
   void initState() {
     super.initState();
-    key = encrypt.Key.fromUtf8('my 32 length key................');
-    encrypter = encrypt.Encrypter(encrypt.AES(key));
     initFile();
   }
 

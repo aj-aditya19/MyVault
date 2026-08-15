@@ -66,8 +66,6 @@ class TaskItem {
     required this.dayKey,
   });
 
-  /// Stable, small int derived from the task id - used as the local
-  /// notification id so reminders can be scheduled/cancelled per task.
   int get notificationId => id.hashCode & 0x7FFFFFFF;
 
   TaskItem copyWith({
@@ -137,8 +135,6 @@ class TaskItem {
     );
   }
 
-  /// Builds a [TaskItem] from the legacy `{"title": ..., "isDone": ...}`
-  /// shape used by the original app so old saved data keeps working.
   factory TaskItem.fromLegacy(
     Map<String, dynamic> json,
     String dayKey,

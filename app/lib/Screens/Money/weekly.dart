@@ -1,9 +1,7 @@
 import 'package:app/Screens/Money/moneyhistory.dart';
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:app/core/services/storage_service.dart';
 
 class Weekly extends StatefulWidget {
   final ThemeMode themeMode;
@@ -25,34 +23,14 @@ class _WeeklyState extends State<Weekly> {
   List<Map<String, dynamic>> sectors = [];
   List<Map<String, dynamic>> weeklySpending = [];
 
-  late File weeklyFile;
-
-  late encrypt.Key key;
-  late encrypt.Encrypter encrypter;
-
   int weekNumber = 0;
+
+  static const String _boxName = 'weekly_money';
 
   @override
   void initState() {
     super.initState();
-    key = encrypt.Key.fromUtf8('my 32 length key................');
-    encrypter = encrypt.Encrypter(encrypt.AES(key));
-    initFile();
-  }
-
-  String encryptData(String data) {
-    final iv = encrypt.IV.fromSecureRandom(16);
-    final encrypted = encrypter.encrypt(data, iv: iv);
-    final combined = iv.bytes + encrypted.bytes;
-    return base64Encode(combined);
-  }
-
-  String decryptData(String base64Data) {
-    final combined = base64Decode(base64Data);
-    final iv = encrypt.IV(combined.sublist(0, 16));
-    final encryptedBytes = combined.sublist(16);
-    final encrypted = encrypt.Encrypted(encryptedBytes);
-    return encrypter.decrypt(encrypted, iv: iv);
+    loadWeeklyData();
   }
 
   int getCurrentWeekNumber() {
@@ -86,74 +64,58 @@ class _WeeklyState extends State<Weekly> {
     );
   }
 
-  Future<void> initFile() async {
-    final dir = await getApplicationDocumentsDirectory();
-    weeklyFile = File("${dir.path}/weekly_money.txt");
+  Future<List<Map<String, dynamic>>> _loadAllWeeks() async {
+    List<Map<String, dynamic>> weeks = await StorageService.readList(_boxName);
 
-    if (!await weeklyFile.exists()) {
-      await weeklyFile.create();
-      await weeklyFile.writeAsString(encryptData(jsonEncode([])));
+    if (weeks.isEmpty) {
+      final dir = await getApplicationDocumentsDirectory();
+      final legacy = await StorageService.readLegacyPath(
+        '${dir.path}/weekly_money.txt',
+      );
+      if (legacy is List && legacy.isNotEmpty) {
+        weeks = legacy
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+        await StorageService.write(_boxName, weeks);
+      }
     }
 
-    await loadWeeklyData();
+    return weeks;
   }
 
   Future<void> loadWeeklyData() async {
     weekNumber = getCurrentWeekNumber();
 
-    String content = await weeklyFile.readAsString();
+    final weeks = await _loadAllWeeks();
 
-    if (content.isEmpty) return;
+    final currentWeek = weeks.firstWhere(
+      (w) => w["week_number"] == weekNumber,
+      orElse: () => {},
+    );
 
-    try {
-      final decrypted = decryptData(content);
-      final List data = jsonDecode(decrypted);
+    if (currentWeek.isNotEmpty) {
+      weeklyBudget = (currentWeek["weekly_budget"] ?? 0).toDouble();
 
-      final currentWeek = data.firstWhere(
-        (w) => w["week_number"] == weekNumber,
-        orElse: () => null,
+      sectors = List<Map<String, dynamic>>.from(currentWeek["sectors"] ?? []);
+
+      weeklySpending = List<Map<String, dynamic>>.from(
+        currentWeek["spending"] ?? [],
       );
 
-      if (currentWeek != null) {
-        weeklyBudget = (currentWeek["weekly_budget"] ?? 0).toDouble();
+      double spent = weeklySpending.fold(
+        0,
+        (sum, item) => sum + (item["amount"] ?? 0),
+      );
 
-        sectors = List<Map<String, dynamic>>.from(currentWeek["sectors"] ?? []);
-
-        weeklySpending = List<Map<String, dynamic>>.from(
-          currentWeek["spending"] ?? [],
-        );
-
-        double spent = weeklySpending.fold(
-          0,
-          (sum, item) => sum + (item["amount"] ?? 0),
-        );
-
-        remainingWeekly = weeklyBudget - spent;
-      }
-
-      setState(() {});
-    } catch (e) {
-      print("Load Error: $e");
+      remainingWeekly = weeklyBudget - spent;
     }
+
+    setState(() {});
   }
 
   Future<void> saveWeeklyData() async {
-    List weeks = [];
-
-    String content = await weeklyFile.readAsString();
-
-    if (content.isNotEmpty) {
-      try {
-        final decrypted = decryptData(content);
-        final decoded = jsonDecode(decrypted);
-
-        if (decoded is List) {
-          weeks = decoded;
-        }
-      } catch (e) {
-        print("Decode Error: $e");
-      }
-    }
+    final weeks = await StorageService.readList(_boxName);
 
     final newWeek = {
       "week_number": weekNumber,
@@ -170,8 +132,7 @@ class _WeeklyState extends State<Weekly> {
       weeks.add(newWeek);
     }
 
-    String encrypted = encryptData(jsonEncode(weeks));
-    await weeklyFile.writeAsString(encrypted);
+    await StorageService.write(_boxName, weeks);
   }
 
   void setWeeklyBudget() {
@@ -297,10 +258,6 @@ class _WeeklyState extends State<Weekly> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    // var color = [
-    //   scheme.primary.withValues(alpha: 0.95),
-    //   scheme.tertiary.withValues(alpha: 0.95),
-    // ];
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       floatingActionButton: FloatingActionButton(

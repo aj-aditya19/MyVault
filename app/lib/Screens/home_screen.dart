@@ -39,10 +39,8 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // screens
   List<Widget> get screens => [
     DashboardScreen(key: ValueKey('dash-$_dashboardTick'), onOpenTab: _goToTab),
-    // DashboardScreen(onOpenTab: _goToTab),
     Taskhome(
       themeMode: widget.themeMode,
       onThemeModeChanged: widget.onThemeModeChanged,

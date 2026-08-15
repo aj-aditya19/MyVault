@@ -98,7 +98,6 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
         ? 1
         : sortedSubjects.first.value;
 
-    // heatmap: last 70 days
     final heatmapDays = List.generate(
       70,
       (i) => today.subtract(Duration(days: 69 - i)),
