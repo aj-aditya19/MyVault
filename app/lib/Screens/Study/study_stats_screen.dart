@@ -75,19 +75,18 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
             .fold<int>(0, (sum, s) => sum + s.durationMinutes) /
         60.0;
 
-    // last 7 days, oldest -> newest, for the line chart
-    final last7Days = List.generate(
-      7,
-      (i) => today.subtract(Duration(days: 6 - i)),
+    final daysInMonth = DateTime(today.year, today.month + 1, 0).day;
+    final daysthismonth = List.generate(
+      daysInMonth,
+      (i) => DateTime(today.year, today.month, i + 1),
     );
     final spots = List.generate(
-      last7Days.length,
-      (i) => FlSpot(i.toDouble(), _hoursOn(last7Days[i])),
+      daysthismonth.length,
+      (i) => FlSpot(i.toDouble(), _hoursOn(daysthismonth[i])),
     );
     final maxY = spots.fold<double>(1, (m, s) => s.y > m ? s.y : m) + 0.5;
     const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    // subject-wise breakdown, all time
     final subjectTotals = <String, int>{};
     for (final s in _sessions) {
       subjectTotals[s.subject] =
@@ -99,7 +98,6 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
         ? 1
         : sortedSubjects.first.value;
 
-    // heatmap: last 70 days
     final heatmapDays = List.generate(
       70,
       (i) => today.subtract(Duration(days: 69 - i)),
@@ -159,7 +157,7 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
           const SizedBox(height: 20),
           const SectionHeading(
             title: 'Weekly Trend',
-            subtitle: 'Hours studied per day, last 7 days',
+            subtitle: 'Hours studied per day, since starting of the months',
           ),
           const SizedBox(height: 10),
           Container(
@@ -217,13 +215,13 @@ class _StudyStatsScreenState extends State<StudyStatsScreen> {
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
                         final idx = value.toInt();
-                        if (idx < 0 || idx >= dayLabels.length) {
+                        if (idx < 0) {
                           return const SizedBox.shrink();
                         }
                         return Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: Text(
-                            " ${dayLabels[last7Days[idx].weekday - 1]}",
+                            " ${dayLabels[daysthismonth[idx].weekday - 1]}",
                             style: TextStyle(
                               fontSize: 10,
                               color: scheme.onSurfaceVariant,

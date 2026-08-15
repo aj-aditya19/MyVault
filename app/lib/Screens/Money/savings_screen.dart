@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:encrypt/encrypt.dart' as encrypt;
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
+import 'package:app/core/services/storage_service.dart';
 
 class SavingsScreen extends StatefulWidget {
   const SavingsScreen({super.key});
@@ -13,46 +10,24 @@ class SavingsScreen extends StatefulWidget {
 
 class _SavingsScreenState extends State<SavingsScreen> {
   List<Map<String, dynamic>> savings = [];
-  late encrypt.Key key;
-  late encrypt.Encrypter encrypter;
 
   @override
   void initState() {
     super.initState();
-    key = encrypt.Key.fromUtf8('my 32 length key................');
-    encrypter = encrypt.Encrypter(encrypt.AES(key));
     loadSavings();
-  }
-
-  String decryptData(String base64Data) {
-    final combined = base64Decode(base64Data);
-    final iv = encrypt.IV(combined.sublist(0, 16));
-    final encryptedBytes = combined.sublist(16);
-    final encrypted = encrypt.Encrypted(encryptedBytes);
-    return encrypter.decrypt(encrypted, iv: iv);
   }
 
   Future<void> loadSavings() async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      final myVaultDir = Directory('${dir.path}/MyVault');
-      await myVaultDir.create(recursive: true);
-      final file = File("${myVaultDir.path}/account_data.txt");
-
-      if (!await file.exists()) return;
-
-      String content = await file.readAsString();
-      if (content.isEmpty) return;
-
-      // 🔑 Decrypt before JSON decode
-      String decrypted = decryptData(content);
-
-      Map<String, dynamic> data = jsonDecode(decrypted);
+      final data = await StorageService.readMap('account_data');
+      final transactions = List<Map<String, dynamic>>.from(
+        data["transactions"] ?? [],
+      );
 
       setState(() {
-        savings = List<Map<String, dynamic>>.from(
-          data["transactions"].where((item) => item["sector"] == "Savings"),
-        );
+        savings = transactions
+            .where((item) => item["sector"] == "Savings")
+            .toList();
       });
     } catch (e) {
       print("Error loading savings: $e");

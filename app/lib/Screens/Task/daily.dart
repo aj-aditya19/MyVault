@@ -59,7 +59,6 @@ class _DailyTaskState extends State<DailyTask> {
         if (map.containsKey('id')) {
           tasks.add(TaskItem.fromJson(map));
         } else {
-          // legacy entry from the old DailyTask screen - give it a stable id.
           tasks.add(TaskItem.fromLegacy(map, dayKey, _uuid.v4()));
           needsMigrationSave = true;
         }
@@ -270,7 +269,6 @@ class _DailyTaskState extends State<DailyTask> {
           LayoutBuilder(
             builder: (context, constraints) {
               final isDesktop = constraints.maxWidth > 900;
-              final isTablet = constraints.maxWidth > 600;
 
               return GridView.count(
                 shrinkWrap: true,

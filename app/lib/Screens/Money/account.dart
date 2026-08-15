@@ -1,9 +1,7 @@
 import 'package:app/Screens/Money/savings_screen.dart';
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'dart:io';
-import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:path_provider/path_provider.dart';
+import 'package:app/core/services/storage_service.dart';
 
 class Account extends StatefulWidget {
   final ThemeMode themeMode;
@@ -22,69 +20,38 @@ class _AccountState extends State<Account> {
   double totalBalance = 1000;
 
   List<Map<String, dynamic>> transactions = [];
-  late encrypt.Key key;
-  late encrypt.Encrypter encrypter;
 
-  String encryptData(String data) {
-    final iv = encrypt.IV.fromSecureRandom(16);
-    final encrypted = encrypter.encrypt(data, iv: iv);
-    final combined = iv.bytes + encrypted.bytes;
-    return base64Encode(combined);
-  }
-
-  String decryptData(String base64Data) {
-    final combined = base64Decode(base64Data);
-    final iv = encrypt.IV(combined.sublist(0, 16));
-    final encryptedBytes = combined.sublist(16);
-    final encrypted = encrypt.Encrypted(encryptedBytes);
-    return encrypter.decrypt(encrypted, iv: iv);
-  }
+  static const String _boxName = 'account_data';
 
   @override
   void initState() {
     super.initState();
-    key = encrypt.Key.fromUtf8('my 32 length key................');
-    encrypter = encrypt.Encrypter(encrypt.AES(key));
     loadData();
   }
 
-  Future<File> getFile() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final myVaultDir = Directory('${dir.path}/MyVault');
-    await myVaultDir.create(recursive: true);
-    return File("${myVaultDir.path}/account_data.txt");
-  }
-
   Future<void> saveData() async {
-    final file = await getFile();
-
-    Map<String, dynamic> data = {
+    await StorageService.write(_boxName, {
       "balance": totalBalance,
       "transactions": transactions,
-    };
-
-    String encrypted = encryptData(jsonEncode(data));
-    await file.writeAsString(encrypted);
+    });
   }
 
   Future<void> loadData() async {
     try {
-      final file = await getFile();
+      Map<String, dynamic> data = await StorageService.readMap(_boxName);
 
-      if (await file.exists()) {
-        String content = await file.readAsString();
-
-        if (content.isEmpty) return;
-
-        String decrypted;
-        try {
-          decrypted = decryptData(content);
-        } catch (_) {
-          decrypted = content;
+      if (data.isEmpty) {
+        final dir = await getApplicationDocumentsDirectory();
+        final legacy = await StorageService.readLegacyPath(
+          '${dir.path}/MyVault/account_data.txt',
+        );
+        if (legacy is Map && legacy.isNotEmpty) {
+          data = Map<String, dynamic>.from(legacy);
+          await StorageService.write(_boxName, data);
         }
+      }
 
-        Map<String, dynamic> data = jsonDecode(decrypted);
-
+      if (data.isNotEmpty) {
         setState(() {
           totalBalance = (data["balance"] ?? 0).toDouble();
           transactions = List<Map<String, dynamic>>.from(
@@ -401,8 +368,6 @@ class _AccountState extends State<Account> {
                 borderRadius: BorderRadius.circular(10),
                 gradient: LinearGradient(
                   colors: [
-                    // scheme.primary.withValues(alpha: 0.95),
-                    // scheme.tertiary.withValues(alpha: 0.95),
                     Color.fromARGB(255, 59, 159, 182),
                     Color.fromARGB(255, 59, 159, 182),
                   ],

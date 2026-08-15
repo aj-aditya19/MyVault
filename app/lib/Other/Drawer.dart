@@ -44,10 +44,6 @@ class _MyDrawerState extends State<MyDrawer> {
           DrawerHeader(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                // colors: [
-                //   scheme.primary.withValues(alpha: 0.95),
-                //   scheme.tertiary.withValues(alpha: 0.95),
-                // ],
                 colors: [
                   Color.fromARGB(255, 59, 159, 182),
                   Color.fromARGB(255, 59, 159, 182),

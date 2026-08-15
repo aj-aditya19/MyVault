@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:app/core/services/storage_service.dart';
 
 class Valueshome extends StatefulWidget {
   const Valueshome({super.key});
@@ -14,73 +12,38 @@ class Valueshome extends StatefulWidget {
 class _ValueshomeState extends State<Valueshome> {
   final TextEditingController controller = TextEditingController();
   List<String> valuesList = [];
-  late File valuesFile;
 
-  late final encrypt.Key key;
-  late final encrypt.Encrypter encrypter;
-
-  String encryptData(String data) {
-    final iv = encrypt.IV.fromSecureRandom(16);
-    final encrypted = encrypter.encrypt(data, iv: iv);
-    final combined = iv.bytes + encrypted.bytes;
-    return base64Encode(combined);
-  }
-
-  String decrypt(String base64Data) {
-    final combined = base64Decode(base64Data);
-    final iv = encrypt.IV(combined.sublist(0, 16));
-    final encryptedBytes = combined.sublist(16);
-    final encrypted = encrypt.Encrypted(encryptedBytes);
-    return encrypter.decrypt(encrypted, iv: iv);
-  }
+  static const String _boxName = 'values_file';
 
   Future<void> inifile() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final myVaultDir = Directory('${dir.path}/MyVault');
-    await myVaultDir.create(recursive: true);
-    valuesFile = File('${myVaultDir.path}/values_file.txt');
+    List<dynamic> decoded = await StorageService.read<List<dynamic>>(
+      _boxName,
+      <dynamic>[],
+    );
 
-    if (!await valuesFile.exists()) {
-      await valuesFile.create();
-      await valuesFile.writeAsString(encryptData(jsonEncode([])));
-    }
-
-    String content = await valuesFile.readAsString();
-    if (content.isEmpty) return;
-    try {
-      final decrypted = decrypt(content);
-      List decodedData = jsonDecode(decrypted);
-      setState(() {
-        valuesList = List<String>.from(decodedData);
-      });
-    } catch (e) {
-      print("Data is not encrypted. Encrypting old data now....");
-      try {
-        List decodedData = jsonDecode(content);
-        String encrypted = encryptData(jsonEncode(decodedData));
-        await valuesFile.writeAsString(encrypted);
-
-        setState(() {
-          valuesList = List<String>.from(decodedData);
-        });
-      } catch (e2) {
-        print("File is corrupted : $e2");
-        valuesList = [];
+    if (decoded.isEmpty) {
+      final dir = await getApplicationDocumentsDirectory();
+      final legacy = await StorageService.readLegacyPath(
+        '${dir.path}/MyVault/values_file.txt',
+      );
+      if (legacy is List && legacy.isNotEmpty) {
+        decoded = legacy;
+        await StorageService.write(_boxName, decoded);
       }
     }
+
+    setState(() {
+      valuesList = List<String>.from(decoded);
+    });
   }
 
   Future<void> saveValues() async {
-    final jsonString = jsonEncode(valuesList);
-    final encryptedData = encryptData(jsonString);
-    await valuesFile.writeAsString(encryptedData);
+    await StorageService.write(_boxName, valuesList);
   }
 
   @override
   void initState() {
     super.initState();
-    key = encrypt.Key.fromUtf8('my 32 length key................');
-    encrypter = encrypt.Encrypter(encrypt.AES(key));
     inifile();
   }
 
@@ -151,7 +114,6 @@ class _ValueshomeState extends State<Valueshome> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // 🔹 Input Row
             Row(
               children: [
                 Expanded(
@@ -171,7 +133,6 @@ class _ValueshomeState extends State<Valueshome> {
 
             const SizedBox(height: 20),
 
-            // 🔹 Values List
             Expanded(
               child: ListView.builder(
                 itemCount: valuesList.length,

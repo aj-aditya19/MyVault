@@ -14,7 +14,6 @@ class StudyHomeScreen extends StatefulWidget {
 class _StudyHomeScreenState extends State<StudyHomeScreen> {
   int selectedIndex = 0;
 
-  // Bump to force the Stats tab to reload after a session is logged.
   int _statsTick = 0;
 
   void _onSessionSaved() {

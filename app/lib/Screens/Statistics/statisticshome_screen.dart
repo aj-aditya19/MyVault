@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'dart:io';
-import 'package:encrypt/encrypt.dart' as encrypt;
-import 'package:path_provider/path_provider.dart';
 import 'dart:math' as math;
+import 'package:app/core/services/storage_service.dart';
 
 class StatisticshomeScreen extends StatefulWidget {
   const StatisticshomeScreen({super.key});
@@ -13,10 +10,6 @@ class StatisticshomeScreen extends StatefulWidget {
 }
 
 class _StatisticshomeScreenState extends State<StatisticshomeScreen> {
-  late File _checkinFile;
-  late encrypt.Key _key;
-  late encrypt.Encrypter _encrypter;
-
   bool _loading = true;
 
   Map<String, dynamic> _allData = {};
@@ -28,13 +21,9 @@ class _StatisticshomeScreenState extends State<StatisticshomeScreen> {
   void initState() {
     super.initState();
 
-    _key = encrypt.Key.fromUtf8('my 32 length key................');
-
-    _encrypter = encrypt.Encrypter(encrypt.AES(_key));
-
     _currentWeekStart = getStartOfWeek(DateTime.now());
 
-    _initFile();
+    _loadStudyHours();
   }
 
   DateTime getStartOfWeek(DateTime date) {
@@ -49,63 +38,9 @@ class _StatisticshomeScreenState extends State<StatisticshomeScreen> {
     return getStartOfWeek(date).add(const Duration(days: 6));
   }
 
-  String _encryptData(String data) {
-    final iv = encrypt.IV.fromSecureRandom(16);
-
-    final encrypted = _encrypter.encrypt(data, iv: iv);
-
-    final combined = iv.bytes + encrypted.bytes;
-
-    return base64Encode(combined);
-  }
-
-  String _decryptData(String base64Data) {
-    final combined = base64Decode(base64Data);
-
-    final iv = encrypt.IV(combined.sublist(0, 16));
-
-    final encryptedBytes = combined.sublist(16);
-
-    final encrypted = encrypt.Encrypted(encryptedBytes);
-
-    return _encrypter.decrypt(encrypted, iv: iv);
-  }
-
-  Future<void> _initFile() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final myVaultDir = Directory('${dir.path}/MyVault');
-    await myVaultDir.create(recursive: true);
-    _checkinFile = File('${myVaultDir.path}/daily_checkin.txt');
-
-    if (!await _checkinFile.exists()) {
-      await _checkinFile.create();
-
-      await _checkinFile.writeAsString(_encryptData(jsonEncode({})));
-    }
-
-    await _loadStudyHours();
-  }
-
   Future<void> _loadStudyHours() async {
     try {
-      final content = await _checkinFile.readAsString();
-
-      if (content.isEmpty) {
-        setState(() {
-          _points = getWeekPoints(_currentWeekStart, {});
-
-          _loading = false;
-        });
-
-        return;
-      }
-
-      final decrypted = _decryptData(content);
-
-      final decoded = jsonDecode(decrypted) as Map<String, dynamic>;
-
-      print(decoded);
-      _allData = decoded;
+      _allData = await StorageService.readMap('daily_checkin');
 
       setState(() {
         _points = getWeekPoints(_currentWeekStart, _allData);

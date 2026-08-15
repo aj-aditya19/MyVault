@@ -1,15 +1,19 @@
-import 'package:app/Screens/Schedule.dart/Schedule_homepage.dart';
+// import 'package:app/Screens/Schedule.dart/Schedule_homepage.dart';
 import 'package:app/core/widgets/pin_gate.dart';
 import 'package:flutter/material.dart';
 
 class Appbar extends StatelessWidget implements PreferredSizeWidget {
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeModeChanged;
+  final bool isSignedIn;
+  final VoidCallback onLoginRequested;
 
   const Appbar({
     super.key,
     required this.themeMode,
     required this.onThemeModeChanged,
+    required this.isSignedIn,
+    required this.onLoginRequested,
   });
 
   ThemeMode _nextThemeMode() {
@@ -22,17 +26,17 @@ class Appbar extends StatelessWidget implements PreferredSizeWidget {
         : Icons.dark_mode_rounded;
   }
 
-  Future<void> _openSchedule(BuildContext context) async {
-    final unlocked = await ensureSectionUnlocked(
-      context,
-      sectionName: 'Schedule',
-    );
-    if (!unlocked || !context.mounted) return;
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const ScheduleHomepage()),
-    );
-  }
+  // Future<void> _openSchedule(BuildContext context) async {
+  //   final unlocked = await ensureSectionUnlocked(
+  //     context,
+  //     sectionName: 'Schedule',
+  //   );
+  //   if (!unlocked || !context.mounted) return;
+  // Navigator.push(
+  //   context,
+  //   MaterialPageRoute(builder: (context) => const ScheduleHomepage()),
+  // );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -48,16 +52,22 @@ class Appbar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ),
       actions: [
+        if (!isSignedIn)
+          IconButton(
+            tooltip: 'Login',
+            onPressed: onLoginRequested,
+            icon: const Icon(Icons.login_rounded),
+          ),
         IconButton(
           tooltip: 'Switch Theme',
           onPressed: () => onThemeModeChanged(_nextThemeMode()),
           icon: Icon(_themeIcon()),
         ),
-        IconButton(
-          tooltip: 'Schedule (locked)',
-          onPressed: () => _openSchedule(context),
-          icon: const Icon(Icons.calendar_month_rounded),
-        ),
+        // IconButton(
+        //   tooltip: 'Schedule (locked)',
+        //   onPressed: () => _openSchedule(context),
+        //   icon: const Icon(Icons.calendar_month_rounded),
+        // ),
         const SizedBox(width: 6),
       ],
     );

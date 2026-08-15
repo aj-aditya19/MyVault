@@ -11,11 +11,15 @@ import 'package:flutter/material.dart';
 class HomeScreen extends StatefulWidget {
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeModeChanged;
+  final bool isSignedIn;
+  final VoidCallback onLoginRequested;
 
   HomeScreen({
     super.key,
     required this.themeMode,
     required this.onThemeModeChanged,
+    required this.isSignedIn,
+    required this.onLoginRequested,
   });
 
   @override
@@ -35,10 +39,8 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // screens
   List<Widget> get screens => [
     DashboardScreen(key: ValueKey('dash-$_dashboardTick'), onOpenTab: _goToTab),
-    // DashboardScreen(onOpenTab: _goToTab),
     Taskhome(
       themeMode: widget.themeMode,
       onThemeModeChanged: widget.onThemeModeChanged,
@@ -117,6 +119,8 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: Appbar(
         themeMode: widget.themeMode,
         onThemeModeChanged: widget.onThemeModeChanged,
+        isSignedIn: widget.isSignedIn,
+        onLoginRequested: widget.onLoginRequested,
       ),
       body: SafeArea(
         top: false,

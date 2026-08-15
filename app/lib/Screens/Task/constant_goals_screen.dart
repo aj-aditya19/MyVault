@@ -1,10 +1,8 @@
-import 'dart:convert';
-import 'dart:io';
 import 'dart:math' as math;
 
-import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:app/core/services/storage_service.dart';
 
 class GoalEntry {
   GoalEntry({
@@ -51,9 +49,7 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
   final TextEditingController _controller = TextEditingController();
   final List<GoalEntry> _goals = [];
 
-  late File _goalsFile;
-  late encrypt.Key _key;
-  late encrypt.Encrypter _encrypter;
+  static const String _boxName = 'constant_goals';
 
   DateTime _startDate = _startOfDay(DateTime.now());
   bool _loaded = false;
@@ -61,14 +57,8 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
   @override
   void initState() {
     super.initState();
-    _key = encrypt.Key.fromUtf8('my 32 length key................');
-    _encrypter = encrypt.Encrypter(encrypt.AES(_key));
-    _initFile();
+    _loadData();
   }
-
-  // ---------------------------------------------------------------------
-  // Responsive sizing helpers
-  // ---------------------------------------------------------------------
 
   double _cellWidthFor(double screenWidth) {
     if (screenWidth < 380) return 30;
@@ -83,10 +73,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
     if (screenWidth < 900) return 150;
     return 180;
   }
-
-  // ---------------------------------------------------------------------
-  // Date helpers
-  // ---------------------------------------------------------------------
 
   static DateTime _startOfDay(DateTime d) => DateTime(d.year, d.month, d.day);
 
@@ -107,8 +93,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
 
   DateTime get _todayStart => _startOfDay(DateTime.now());
 
-  /// Always shows at least 3 weeks (21 days) from the tracker's start date,
-  /// and grows automatically once the user has been tracking longer than that.
   int get _totalWeeks {
     final daysSinceStart = _todayStart.difference(_startDate).inDays + 1;
     final weeksElapsed = (daysSinceStart / 7).ceil();
@@ -134,7 +118,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
     return done / _goals.length;
   }
 
-  /// Overall completion rate for one goal, across every tracked day up to today.
   double _goalCompletionRate(GoalEntry g) {
     final trackedDays = _todayStart.difference(_startDate).inDays + 1;
     if (trackedDays <= 0) return 0;
@@ -142,8 +125,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
     return (done / trackedDays).clamp(0, 1);
   }
 
-  /// Average completion rate across a given week, counting only days
-  /// that have already happened (today included, future days excluded).
   double _weekAverage(int weekIndex) {
     final weeks = _weeks;
     if (weekIndex < 0 || weekIndex >= weeks.length) return 0;
@@ -158,7 +139,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
     return total / validDays.length;
   }
 
-  /// 0-indexed week that contains "today".
   int get _currentWeekIndex {
     final daysSinceStart = _todayStart.difference(_startDate).inDays;
     return daysSinceStart ~/ 7;
@@ -183,61 +163,20 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
 
   double get _weekVsPreviousDelta => _currentWeekAvg - _previousWeekAvg;
 
-  // ---------------------------------------------------------------------
-  // Persistence (unchanged logic — encrypted single-file read/write)
-  // ---------------------------------------------------------------------
-
-  String _encryptData(String data) {
-    final iv = encrypt.IV.fromSecureRandom(16);
-    final encrypted = _encrypter.encrypt(data, iv: iv);
-    final combined = iv.bytes + encrypted.bytes;
-    return base64Encode(combined);
-  }
-
-  String _decryptData(String base64Data) {
-    final combined = base64Decode(base64Data);
-    final iv = encrypt.IV(combined.sublist(0, 16));
-    final encryptedBytes = combined.sublist(16);
-    final encrypted = encrypt.Encrypted(encryptedBytes);
-    return _encrypter.decrypt(encrypted, iv: iv);
-  }
-
-  Future<void> _initFile() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final myVaultDir = Directory('${dir.path}/MyVault');
-    await myVaultDir.create(recursive: true);
-    _goalsFile = File('${myVaultDir.path}/constant_goals.txt');
-
-    if (!await _goalsFile.exists()) {
-      await _goalsFile.create();
-      await _goalsFile.writeAsString(
-        _encryptData(
-          jsonEncode({'startDate': _dateKey(_startDate), 'goals': <dynamic>[]}),
-        ),
-      );
-    }
-
-    await _loadData();
-  }
-
   Future<void> _loadData() async {
-    Map<String, dynamic>? decoded;
-    try {
-      final content = await _goalsFile.readAsString();
-      if (content.isNotEmpty) {
-        final decrypted = _decryptData(content);
-        decoded = jsonDecode(decrypted) as Map<String, dynamic>;
-      }
-    } catch (_) {
-      try {
-        final fallback = await _goalsFile.readAsString();
-        decoded = jsonDecode(fallback) as Map<String, dynamic>;
-      } catch (_) {
-        decoded = null;
+    Map<String, dynamic> decoded = await StorageService.readMap(_boxName);
+
+    if (decoded.isEmpty) {
+      final dir = await getApplicationDocumentsDirectory();
+      final legacy = await StorageService.readLegacyPath(
+        '${dir.path}/MyVault/constant_goals.txt',
+      );
+      if (legacy is Map && legacy.isNotEmpty) {
+        decoded = Map<String, dynamic>.from(legacy);
       }
     }
 
-    if (decoded != null) {
+    if (decoded.isNotEmpty) {
       final rawGoals = (decoded['goals'] as List?) ?? [];
       final startDateStr = decoded['startDate']?.toString();
 
@@ -270,12 +209,8 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
       'startDate': _dateKey(_startDate),
       'goals': _goals.map((g) => g.toJson()).toList(),
     };
-    await _goalsFile.writeAsString(_encryptData(jsonEncode(payload)));
+    await StorageService.write(_boxName, payload);
   }
-
-  // ---------------------------------------------------------------------
-  // Goal actions (unchanged logic)
-  // ---------------------------------------------------------------------
 
   Future<void> _addGoal() async {
     final text = _controller.text.trim();
@@ -330,7 +265,7 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
   }
 
   Future<void> _toggleCompletion(int goalIndex, DateTime day) async {
-    if (day.isAfter(_todayStart)) return; // can't complete future days
+    if (day.isAfter(_todayStart)) return;
     final key = _dateKey(day);
     setState(() {
       final current = _goals[goalIndex].completion[key] ?? false;
@@ -338,10 +273,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
     });
     await _saveData();
   }
-
-  // ---------------------------------------------------------------------
-  // Build
-  // ---------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -403,8 +334,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
       ),
     );
   }
-
-  // --- Small reusable pieces --------------------------------------------
 
   Widget _buildInfoBanner(ColorScheme scheme) {
     return Row(
@@ -545,8 +474,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
       ),
     );
   }
-
-  // --- Tactics + week-wise chart row ------------------------------------
 
   Widget _buildTacticsAndChartRow(ColorScheme scheme, double screenWidth) {
     final tactics = _buildTacticsCard(scheme);
@@ -773,8 +700,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
     );
   }
 
-  // --- Weekly checkbox grid (task list) ----------------------------------
-
   Widget _buildWeeklyGrid(
     ColorScheme scheme,
     double cellWidth,
@@ -785,12 +710,11 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Fixed left column: goal names
         SizedBox(
           width: nameColWidth,
           child: Column(
             children: [
-              SizedBox(height: _headerRowHeight * 2), // corner space
+              SizedBox(height: _headerRowHeight * 2),
               for (var i = 0; i < _goals.length; i++)
                 Container(
                   height: _cellHeight,
@@ -856,14 +780,12 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
             ],
           ),
         ),
-        // Scrollable right side: week headers + day headers + checkbox grid
         Expanded(
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Week label row
                 Row(
                   children: weeks.asMap().entries.map((entry) {
                     final weekDays = entry.value;
@@ -890,7 +812,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
                     );
                   }).toList(),
                 ),
-                // Day letter + date number row
                 Row(
                   children: _allDays.map((day) {
                     final isToday = _dateKey(day) == _dateKey(_todayStart);
@@ -945,7 +866,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
                     );
                   }).toList(),
                 ),
-                // Checkbox rows, one per goal (zebra striped to match name column)
                 for (var g = 0; g < _goals.length; g++)
                   Row(
                     children: _allDays.map((day) {

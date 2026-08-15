@@ -1,12 +1,9 @@
-import 'dart:convert';
-import 'dart:io';
-
-import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:app/core/models/schedule_category.dart';
 import 'package:app/core/services/notification_service.dart';
+import 'package:app/core/services/storage_service.dart';
 
 class ScheduleHomepage extends StatefulWidget {
   const ScheduleHomepage({super.key});
@@ -37,9 +34,7 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
     for (final day in _weekDays) day: [],
   };
 
-  late final encrypt.Key _key;
-  late final encrypt.Encrypter _encrypter;
-  late File _scheduleFile;
+  static const String _boxName = 'weekly_schedule';
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _startController = TextEditingController(
@@ -65,10 +60,8 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
   @override
   void initState() {
     super.initState();
-    _key = encrypt.Key.fromUtf8('my 32 length key................');
-    _encrypter = encrypt.Encrypter(encrypt.AES(_key));
     _selectedDay = _dayNameForDate(DateTime.now());
-    _initFile();
+    _loadSchedule();
   }
 
   @override
@@ -79,47 +72,19 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
     super.dispose();
   }
 
-  String _encryptData(String data) {
-    final iv = encrypt.IV.fromSecureRandom(16);
-    final encrypted = _encrypter.encrypt(data, iv: iv);
-    final combined = iv.bytes + encrypted.bytes;
-    return base64Encode(combined);
-  }
-
-  String _decryptData(String base64Data) {
-    final combined = base64Decode(base64Data);
-    final iv = encrypt.IV(combined.sublist(0, 16));
-    final encryptedBytes = combined.sublist(16);
-    final encrypted = encrypt.Encrypted(encryptedBytes);
-    return _encrypter.decrypt(encrypted, iv: iv);
-  }
-
-  Future<void> _initFile() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final myVaultDir = Directory('${dir.path}/MyVault');
-    await myVaultDir.create(recursive: true);
-    _scheduleFile = File('${myVaultDir.path}/weekly_schedule.txt');
-
-    if (!await _scheduleFile.exists()) {
-      await _scheduleFile.create();
-      await _scheduleFile.writeAsString(_encryptData(jsonEncode({})));
-    }
-
-    await _loadSchedule();
-  }
-
   Future<void> _loadSchedule() async {
     try {
-      final content = await _scheduleFile.readAsString();
-      if (content.isEmpty) return;
+      Map<String, dynamic> decoded = await StorageService.readMap(_boxName);
 
-      Map<String, dynamic> decoded;
-
-      try {
-        decoded = jsonDecode(_decryptData(content)) as Map<String, dynamic>;
-      } catch (_) {
-        decoded = jsonDecode(content) as Map<String, dynamic>;
-        await _scheduleFile.writeAsString(_encryptData(jsonEncode(decoded)));
+      if (decoded.isEmpty) {
+        final dir = await getApplicationDocumentsDirectory();
+        final legacy = await StorageService.readLegacyPath(
+          '${dir.path}/MyVault/weekly_schedule.txt',
+        );
+        if (legacy is Map && legacy.isNotEmpty) {
+          decoded = Map<String, dynamic>.from(legacy);
+          await StorageService.write(_boxName, decoded);
+        }
       }
 
       for (final day in _weekDays) {
@@ -147,7 +112,7 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
         day: _tasksByDay[day]!.map((entry) => entry.toJson()).toList(),
     };
 
-    await _scheduleFile.writeAsString(_encryptData(jsonEncode(payload)));
+    await StorageService.write(_boxName, payload);
   }
 
   String _dayNameForDate(DateTime date) {
@@ -166,25 +131,6 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
         return 'Tues';
       default:
         return 'Wed';
-    }
-  }
-
-  int _weekdayForName(String name) {
-    switch (name) {
-      case 'Thurs':
-        return DateTime.thursday;
-      case 'Fri':
-        return DateTime.friday;
-      case 'Sat':
-        return DateTime.saturday;
-      case 'Sun':
-        return DateTime.sunday;
-      case 'Mon':
-        return DateTime.monday;
-      case 'Tues':
-        return DateTime.tuesday;
-      default:
-        return DateTime.wednesday;
     }
   }
 
@@ -258,17 +204,6 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
     final hourText = hour.toString().padLeft(2, '0');
     final minuteText = minute.toString().padLeft(2, '0');
     return '$hourText:$minuteText';
-  }
-
-  String _formatCompactTime(int minuteOfDay) {
-    final hour = (minuteOfDay ~/ 60) % 24;
-    final minute = minuteOfDay % 60;
-    final period = hour >= 12 ? 'PM' : 'AM';
-    final hour12 = hour % 12 == 0 ? 12 : hour % 12;
-    if (minute == 0) {
-      return '$hour12 $period';
-    }
-    return '$hour12:${minute.toString().padLeft(2, '0')} $period';
   }
 
   String _formatHourLabel(int minuteOfDay) {
@@ -654,7 +589,6 @@ class _ScheduleHomepageState extends State<ScheduleHomepage> {
       ),
     ];
 
-    // add small gap between day label and grid so hour label isn't flush
     return Row(
       children: [headerSlots[0], const SizedBox(width: 8), headerSlots[1]],
     );
@@ -994,7 +928,6 @@ class _ScheduleEntry {
     this.reminderEnabled = false,
   });
 
-  /// Stable small int derived from the id, used as the local notification id.
   int get notificationId => id.hashCode & 0x7FFFFFFF;
 
   int get endMinute => startMinute + durationMinutes;

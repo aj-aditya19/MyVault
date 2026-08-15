@@ -114,7 +114,7 @@ class LicenseScreen extends StatelessWidget {
               );
             },
             style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 56), // Height = 56
+              minimumSize: const Size(double.infinity, 56),
             ),
             icon: Icon(Icons.description_outlined),
             label: Text('View Full Flutter Licenses'),
