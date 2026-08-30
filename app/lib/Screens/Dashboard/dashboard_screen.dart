@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:app/Screens/Project/projecthome_screen.dart';
 import 'package:app/Screens/Quotes/quoteshome_screen.dart';
-import 'package:app/Screens/Schedule.dart/Schedule_homepage.dart';
+// import 'package:app/Screens/Schedule.dart/Schedule_homepage.dart';
 import 'package:app/Screens/Task/constant_goals_screen.dart';
 import 'package:app/Screens/Values/valueshome_screen.dart';
 import 'package:app/core/models/task_model.dart';
@@ -655,14 +655,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     if (unlocked) widget.onOpenTab(3);
                   },
                 ),
-                QuickActionTile(
-                  icon: Icons.calendar_month_rounded,
-                  label: 'Schedule',
-                  color: Colors.indigo,
-                  locked: true,
-                  onTap: () =>
-                      _openLocked('Schedule', () => const ScheduleHomepage()),
-                ),
+                // QuickActionTile(
+                //   icon: Icons.calendar_month_rounded,
+                //   label: 'Schedule',
+                //   color: Colors.indigo,
+                //   locked: true,
+                //   onTap: () =>
+                //       _openLocked('Schedule', () => const ScheduleHomepage()),
+                // ),
                 QuickActionTile(
                   icon: Icons.folder_copy_outlined,
                   label: 'Projects',
