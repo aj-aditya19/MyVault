@@ -4,33 +4,70 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:app/core/services/storage_service.dart';
 
+DateTime? _parseDateKey(String? key) {
+  if (key == null) return null;
+  final parts = key.split('-');
+  if (parts.length != 3) return null;
+  final y = int.tryParse(parts[0]);
+  final m = int.tryParse(parts[1]);
+  final d = int.tryParse(parts[2]);
+  if (y == null || m == null || d == null) return null;
+  return DateTime(y, m, d);
+}
+
+String _formatDateKey(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
 class GoalEntry {
   GoalEntry({
     required this.id,
     required this.name,
+    required this.createdAt,
     Map<String, bool>? completion,
   }) : completion = completion ?? {};
 
   final String id;
   String name;
+  // The day this goal was added. Its history/tracking only starts here —
+  // days before this are never shown as "missed".
+  final DateTime createdAt;
   final Map<String, bool> completion;
 
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
+    'createdAt': _formatDateKey(createdAt),
     'completion': completion,
   };
 
-  factory GoalEntry.fromJson(Map<String, dynamic> json) {
+  // fallbackCreatedAt is used only when migrating goals saved before this
+  // field existed (old shared "startDate" from the previous version).
+  factory GoalEntry.fromJson(
+    Map<String, dynamic> json, {
+    DateTime? fallbackCreatedAt,
+  }) {
     final rawCompletion = (json['completion'] as Map?) ?? {};
+    final completion = rawCompletion.map<String, bool>(
+      (k, v) => MapEntry(k.toString(), v == true),
+    );
+
+    DateTime? createdAt = _parseDateKey(json['createdAt']?.toString());
+
+    if (createdAt == null && completion.isNotEmpty) {
+      final earliestKey = (completion.keys.toList()..sort()).first;
+      createdAt = _parseDateKey(earliestKey);
+    }
+
+    createdAt ??= fallbackCreatedAt ?? DateTime.now();
+    createdAt = DateTime(createdAt.year, createdAt.month, createdAt.day);
+
     return GoalEntry(
       id:
           json['id']?.toString() ??
           DateTime.now().microsecondsSinceEpoch.toString(),
       name: json['name']?.toString() ?? '',
-      completion: rawCompletion.map(
-        (k, v) => MapEntry(k.toString(), v == true),
-      ),
+      createdAt: createdAt,
+      completion: completion,
     );
   }
 }
@@ -51,7 +88,9 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
 
   static const String _boxName = 'constant_goals';
 
-  DateTime _startDate = _startOfDay(DateTime.now());
+  // The month currently shown in the grid. Defaults to the current month and
+  // always renders the 1st through the last day of that month.
+  DateTime _monthCursor = _startOfMonth(DateTime.now());
   bool _loaded = false;
 
   @override
@@ -75,9 +114,10 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
   }
 
   static DateTime _startOfDay(DateTime d) => DateTime(d.year, d.month, d.day);
+  static DateTime _startOfMonth(DateTime d) => DateTime(d.year, d.month, 1);
+  static DateTime _endOfMonth(DateTime d) => DateTime(d.year, d.month + 1, 0);
 
-  static String _dateKey(DateTime d) =>
-      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  static String _dateKey(DateTime d) => _formatDateKey(d);
 
   static const List<String> _dayLetters = [
     'Mo',
@@ -89,18 +129,57 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
     'Su',
   ];
 
+  static const List<String> _monthNames = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+
   static String _dayLetter(DateTime d) => _dayLetters[d.weekday - 1];
 
   DateTime get _todayStart => _startOfDay(DateTime.now());
 
-  int get _totalWeeks {
-    final daysSinceStart = _todayStart.difference(_startDate).inDays + 1;
-    final weeksElapsed = (daysSinceStart / 7).ceil();
-    return math.max(3, weeksElapsed);
+  bool get _isCurrentMonth =>
+      _monthCursor.year == _todayStart.year &&
+      _monthCursor.month == _todayStart.month;
+
+  String get _monthLabel =>
+      '${_monthNames[_monthCursor.month - 1]} ${_monthCursor.year}';
+
+  void _goToPreviousMonth() {
+    setState(
+      () => _monthCursor = DateTime(_monthCursor.year, _monthCursor.month - 1, 1),
+    );
   }
 
-  List<DateTime> get _allDays =>
-      List.generate(_totalWeeks * 7, (i) => _startDate.add(Duration(days: i)));
+  void _goToNextMonth() {
+    if (_isCurrentMonth) return;
+    setState(
+      () => _monthCursor = DateTime(_monthCursor.year, _monthCursor.month + 1, 1),
+    );
+  }
+
+  // Always the 1st through the last day of the viewed month.
+  List<DateTime> get _allDays {
+    final start = _startOfMonth(_monthCursor);
+    final end = _endOfMonth(_monthCursor);
+    final days = <DateTime>[];
+    var d = start;
+    while (!d.isAfter(end)) {
+      days.add(d);
+      d = d.add(const Duration(days: 1));
+    }
+    return days;
+  }
 
   List<List<DateTime>> get _weeks {
     final days = _allDays;
@@ -111,15 +190,23 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
     return weeks;
   }
 
-  double _completionForDay(DateTime day) {
-    if (_goals.isEmpty) return 0;
+  bool _isTrackable(GoalEntry g, DateTime day) {
+    final dayStart = _startOfDay(day);
+    return !dayStart.isBefore(g.createdAt) && !dayStart.isAfter(_todayStart);
+  }
+
+  /// Null means: on this day, no goal existed yet / it's in the future —
+  /// there's simply no data, which is different from "0% done".
+  double? _completionForDay(DateTime day) {
+    final trackable = _goals.where((g) => _isTrackable(g, day)).toList();
+    if (trackable.isEmpty) return null;
     final key = _dateKey(day);
-    final done = _goals.where((g) => g.completion[key] == true).length;
-    return done / _goals.length;
+    final done = trackable.where((g) => g.completion[key] == true).length;
+    return done / trackable.length;
   }
 
   double _goalCompletionRate(GoalEntry g) {
-    final trackedDays = _todayStart.difference(_startDate).inDays + 1;
+    final trackedDays = _todayStart.difference(g.createdAt).inDays + 1;
     if (trackedDays <= 0) return 0;
     final done = g.completion.entries.where((e) => e.value == true).length;
     return (done / trackedDays).clamp(0, 1);
@@ -128,38 +215,51 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
   double _weekAverage(int weekIndex) {
     final weeks = _weeks;
     if (weekIndex < 0 || weekIndex >= weeks.length) return 0;
-    final validDays = weeks[weekIndex]
+    final values = weeks[weekIndex]
         .where((d) => !d.isAfter(_todayStart))
+        .map(_completionForDay)
+        .whereType<double>()
         .toList();
-    if (validDays.isEmpty) return 0;
-    final total = validDays.fold<double>(
-      0,
-      (sum, d) => sum + _completionForDay(d),
-    );
-    return total / validDays.length;
+    if (values.isEmpty) return 0;
+    return values.reduce((a, b) => a + b) / values.length;
   }
 
-  int get _currentWeekIndex {
-    final daysSinceStart = _todayStart.difference(_startDate).inDays;
-    return daysSinceStart ~/ 7;
-  }
+  /// Index (within the viewed month) of the week-row containing "today".
+  /// Only meaningful when viewing the current month.
+  int get _currentWeekIndexInMonth =>
+      ((_todayStart.day - 1) ~/ 7).clamp(0, math.max(0, _weeks.length - 1));
 
-  double get _todayCompletionRate => _completionForDay(_todayStart);
+  double get _todayCompletionRate => _completionForDay(_todayStart) ?? 0;
 
-  bool get _hasYesterday => _todayStart.difference(_startDate).inDays >= 1;
+  bool get _hasYesterday =>
+      _completionForDay(_todayStart.subtract(const Duration(days: 1))) !=
+      null;
 
   double get _yesterdayCompletionRate =>
-      _completionForDay(_todayStart.subtract(const Duration(days: 1)));
+      _completionForDay(_todayStart.subtract(const Duration(days: 1))) ?? 0;
 
   double get _todayVsYesterdayDelta =>
       _todayCompletionRate - _yesterdayCompletionRate;
 
-  bool get _hasPreviousWeek => _currentWeekIndex >= 1;
+  // These two compare rolling 7-day windows (not calendar-week chunks of the
+  // viewed month), so "vs last week" stays correct no matter which month is
+  // on screen.
+  double? _rollingAverage({required int offsetDays}) {
+    final values = List.generate(
+      7,
+      (i) => _completionForDay(
+        _todayStart.subtract(Duration(days: offsetDays + i)),
+      ),
+    ).whereType<double>().toList();
+    if (values.isEmpty) return null;
+    return values.reduce((a, b) => a + b) / values.length;
+  }
 
-  double get _currentWeekAvg => _weekAverage(_currentWeekIndex);
+  bool get _hasPreviousWeek => _rollingAverage(offsetDays: 7) != null;
 
-  double get _previousWeekAvg =>
-      _hasPreviousWeek ? _weekAverage(_currentWeekIndex - 1) : 0;
+  double get _currentWeekAvg => _rollingAverage(offsetDays: 0) ?? 0;
+
+  double get _previousWeekAvg => _rollingAverage(offsetDays: 7) ?? 0;
 
   double get _weekVsPreviousDelta => _currentWeekAvg - _previousWeekAvg;
 
@@ -178,24 +278,23 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
 
     if (decoded.isNotEmpty) {
       final rawGoals = (decoded['goals'] as List?) ?? [];
-      final startDateStr = decoded['startDate']?.toString();
+      // Only used to backfill goals saved by the old version of this screen,
+      // which had no per-goal createdAt of its own.
+      final legacyFallbackStart = _parseDateKey(
+        decoded['startDate']?.toString(),
+      );
 
       setState(() {
         _goals
           ..clear()
           ..addAll(
-            rawGoals.map((e) => GoalEntry.fromJson(e as Map<String, dynamic>)),
+            rawGoals.map(
+              (e) => GoalEntry.fromJson(
+                Map<String, dynamic>.from(e as Map),
+                fallbackCreatedAt: legacyFallbackStart,
+              ),
+            ),
           );
-        if (startDateStr != null) {
-          final parts = startDateStr.split('-');
-          if (parts.length == 3) {
-            _startDate = DateTime(
-              int.parse(parts[0]),
-              int.parse(parts[1]),
-              int.parse(parts[2]),
-            );
-          }
-        }
         _loaded = true;
       });
       await _saveData();
@@ -205,10 +304,7 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
   }
 
   Future<void> _saveData() async {
-    final payload = {
-      'startDate': _dateKey(_startDate),
-      'goals': _goals.map((g) => g.toJson()).toList(),
-    };
+    final payload = {'goals': _goals.map((g) => g.toJson()).toList()};
     await StorageService.write(_boxName, payload);
   }
 
@@ -221,6 +317,8 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
         GoalEntry(
           id: DateTime.now().microsecondsSinceEpoch.toString(),
           name: text,
+          // Tracking starts today — never from some earlier anchor date.
+          createdAt: _todayStart,
         ),
       );
       _controller.clear();
@@ -265,11 +363,12 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
   }
 
   Future<void> _toggleCompletion(int goalIndex, DateTime day) async {
-    if (day.isAfter(_todayStart)) return;
+    final goal = _goals[goalIndex];
+    if (!_isTrackable(goal, day)) return;
     final key = _dateKey(day);
     setState(() {
-      final current = _goals[goalIndex].completion[key] ?? false;
-      _goals[goalIndex].completion[key] = !current;
+      final current = goal.completion[key] ?? false;
+      goal.completion[key] = !current;
     });
     await _saveData();
   }
@@ -317,10 +416,17 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
                               scheme: scheme,
                               icon: Icons.checklist_rounded,
                               title: 'Goals',
-                              child: _buildWeeklyGrid(
-                                scheme,
-                                cellWidth,
-                                nameColWidth,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildMonthHeader(scheme),
+                                  const SizedBox(height: 8),
+                                  _buildWeeklyGrid(
+                                    scheme,
+                                    cellWidth,
+                                    nameColWidth,
+                                  ),
+                                ],
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -601,7 +707,13 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
   Widget _buildWeekChartCard(ColorScheme scheme) {
     const chartHeight = 130.0;
     final barAreaHeight = chartHeight - 46;
-    final weeksToShow = _currentWeekIndex + 1;
+    final totalWeeksInMonth = _weeks.length;
+    final weeksToShow = _isCurrentMonth
+        ? (_currentWeekIndexInMonth + 1).clamp(1, totalWeeksInMonth)
+        : totalWeeksInMonth;
+    final highlightWeekIndex = _isCurrentMonth
+        ? _currentWeekIndexInMonth
+        : -1;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -637,7 +749,7 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: List.generate(weeksToShow, (i) {
                 final avg = _weekAverage(i);
-                final isCurrent = i == _currentWeekIndex;
+                final isCurrent = i == highlightWeekIndex;
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -700,6 +812,46 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
     );
   }
 
+  Widget _buildMonthHeader(ColorScheme scheme) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: _goToPreviousMonth,
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: Icon(
+              Icons.chevron_left_rounded,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        Text(
+          _monthLabel,
+          style: TextStyle(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w700,
+            color: scheme.onSurface,
+          ),
+        ),
+        InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: _isCurrentMonth ? null : _goToNextMonth,
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: Icon(
+              Icons.chevron_right_rounded,
+              color: _isCurrentMonth
+                  ? scheme.onSurfaceVariant.withValues(alpha: 0.3)
+                  : scheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildWeeklyGrid(
     ColorScheme scheme,
     double cellWidth,
@@ -741,7 +893,7 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
                               ),
                             ),
                             Text(
-                              '${(_goalCompletionRate(_goals[i]) * 100).round()}% overall',
+                              '${(_goalCompletionRate(_goals[i]) * 100).round()}% · since ${_goals[i].createdAt.day}/${_goals[i].createdAt.month}',
                               style: TextStyle(
                                 fontSize: 9.5,
                                 color: scheme.onSurfaceVariant,
@@ -869,9 +1021,15 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
                 for (var g = 0; g < _goals.length; g++)
                   Row(
                     children: _allDays.map((day) {
+                      final goal = _goals[g];
                       final key = _dateKey(day);
-                      final done = _goals[g].completion[key] == true;
-                      final isFuture = day.isAfter(_todayStart);
+                      final done = goal.completion[key] == true;
+                      final dayStart = _startOfDay(day);
+                      final isFuture = dayStart.isAfter(_todayStart);
+                      final isBeforeCreated = dayStart.isBefore(
+                        goal.createdAt,
+                      );
+                      final isDisabled = isFuture || isBeforeCreated;
                       final isToday = _dateKey(day) == _dateKey(_todayStart);
 
                       return Container(
@@ -884,7 +1042,9 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
                               ),
                         alignment: Alignment.center,
                         child: GestureDetector(
-                          onTap: () => _toggleCompletion(g, day),
+                          onTap: isDisabled
+                              ? null
+                              : () => _toggleCompletion(g, day),
                           child: Container(
                             width: cellWidth - 10,
                             height: cellWidth - 10,
@@ -892,15 +1052,19 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
                               borderRadius: BorderRadius.circular(7),
                               color: done
                                   ? scheme.primary
-                                  : (isFuture
+                                  : (isBeforeCreated
                                         ? scheme.surfaceContainerHighest
-                                              .withValues(alpha: 0.5)
-                                        : scheme.surfaceContainerHighest),
+                                              .withValues(alpha: 0.22)
+                                        : (isFuture
+                                              ? scheme.surfaceContainerHighest
+                                                    .withValues(alpha: 0.5)
+                                              : scheme
+                                                    .surfaceContainerHighest)),
                               border: Border.all(
                                 color: isToday
                                     ? scheme.primary.withValues(alpha: 0.7)
                                     : scheme.outlineVariant.withValues(
-                                        alpha: 0.4,
+                                        alpha: isBeforeCreated ? 0.15 : 0.4,
                                       ),
                                 width: isToday ? 1.4 : 1,
                               ),
@@ -911,7 +1075,14 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
                                     size: 15,
                                     color: scheme.onPrimary,
                                   )
-                                : null,
+                                : (isBeforeCreated
+                                      ? Icon(
+                                          Icons.remove_rounded,
+                                          size: 12,
+                                          color: scheme.onSurfaceVariant
+                                              .withValues(alpha: 0.35),
+                                        )
+                                      : null),
                           ),
                         ),
                       );

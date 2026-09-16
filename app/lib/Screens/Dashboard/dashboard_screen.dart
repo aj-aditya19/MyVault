@@ -627,7 +627,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   icon: Icons.task_alt_rounded,
                   label: 'Tasks',
                   color: Colors.teal,
-                  onTap: () => widget.onOpenTab(1),
+                  onTap: () => widget.onOpenTab(2),
                 ),
                 QuickActionTile(
                   icon: Icons.school_rounded,
@@ -652,17 +652,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       context,
                       sectionName: 'Money',
                     );
-                    if (unlocked) widget.onOpenTab(3);
+                    if (unlocked) widget.onOpenTab(4);
                   },
                 ),
-                // QuickActionTile(
-                //   icon: Icons.calendar_month_rounded,
-                //   label: 'Schedule',
-                //   color: Colors.indigo,
-                //   locked: true,
-                //   onTap: () =>
-                //       _openLocked('Schedule', () => const ScheduleHomepage()),
-                // ),
+                QuickActionTile(
+                  icon: Icons.calendar_month_rounded,
+                  label: 'Schedule',
+                  color: Colors.indigo,
+                  onTap: () => widget.onOpenTab(1),
+                ),
                 QuickActionTile(
                   icon: Icons.folder_copy_outlined,
                   label: 'Projects',

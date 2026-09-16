@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:app/Other/license_screen.dart';
+// import 'package:app/core/services/try.dart';
 import 'package:app/core/services/notification_service.dart';
 import 'package:app/core/services/pin_service.dart';
 import 'package:app/core/services/sync_manager.dart';
@@ -101,19 +102,15 @@ class _SettingScreenState extends State<SettingScreen> {
     setState(() => _biometricEnabled = value);
   }
 
-  Future<void> _toggleNotifications(bool value) async {
-    setState(() => notificationsEnabled = value);
-    if (value) {
-      await NotificationService.instance.init();
-      await NotificationService.instance.scheduleDailySummary(
-        body: 'Check your tasks and schedule for today in MyVault.',
-      );
-    } else {
-      await NotificationService.instance.cancel(
-        NotificationService.dailySummaryId,
-      );
-    }
-  }
+  // Future<void> _toggleNotifications(bool value) async {
+  //   setState(() => notificationsEnabled = value);
+  //   if (value) {
+  //     await NotificationService.instance.init();
+  //     await DailyReminderService.schedule();
+  //   } else {
+  //     await DailyReminderService.cancelAll();
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +156,7 @@ class _SettingScreenState extends State<SettingScreen> {
                   title: const Text("Daily summary notification"),
                   subtitle: const Text("A reminder every day at 8:00 AM"),
                   value: notificationsEnabled,
-                  onChanged: _toggleNotifications,
+                  onChanged: (value) {},
                 ),
                 const Divider(height: 1),
                 SwitchListTile.adaptive(

@@ -1,5 +1,6 @@
 import 'package:app/core/models/task_model.dart';
 import 'package:app/core/services/storage_service.dart';
+import 'package:app/Screens/Task/task_form_sheet.dart';
 import 'package:flutter/material.dart';
 
 class Dailyhistory extends StatefulWidget {
@@ -25,15 +26,16 @@ class _DailyhistoryState extends State<Dailyhistory> {
 
     raw.forEach((dayKey, value) {
       if (value is! List) return;
-      parsed[dayKey] = value
-          .whereType<Map>()
-          .map((e) {
-            final map = Map<String, dynamic>.from(e);
-            return map.containsKey('id')
-                ? TaskItem.fromJson(map)
-                : TaskItem.fromLegacy(map, dayKey, dayKey + map['title'].toString());
-          })
-          .toList();
+      parsed[dayKey] = value.whereType<Map>().map((e) {
+        final map = Map<String, dynamic>.from(e);
+        return map.containsKey('id')
+            ? TaskItem.fromJson(map)
+            : TaskItem.fromLegacy(
+                map,
+                dayKey,
+                dayKey + map['title'].toString(),
+              );
+      }).toList();
     });
 
     setState(() {
@@ -47,6 +49,26 @@ class _DailyhistoryState extends State<Dailyhistory> {
     return tasks.every((task) => task.isDone);
   }
 
+  Future<void> _editTask(String dayKey, TaskItem task) async {
+    final updated = await showTaskFormSheet(
+      context,
+      existing: task,
+      dayKey: dayKey,
+    );
+    if (updated == null) return;
+
+    final tasks = List<TaskItem>.from(dailyTasks[dayKey] ?? []);
+    final index = tasks.indexWhere((item) => item.id == task.id);
+    if (index == -1) return;
+    tasks[index] = updated;
+    dailyTasks[dayKey] = tasks;
+    await StorageService.write('tasks', {
+      for (final entry in dailyTasks.entries)
+        entry.key: entry.value.map((item) => item.toJson()).toList(),
+    });
+    if (mounted) setState(() {});
+  }
+
   String formatDate(String rawDate) {
     try {
       final parts = rawDate.split("-");
@@ -57,8 +79,18 @@ class _DailyhistoryState extends State<Dailyhistory> {
       );
 
       const months = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
       ];
       const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -95,9 +127,13 @@ class _DailyhistoryState extends State<Dailyhistory> {
                   margin: const EdgeInsets.fromLTRB(12, 12, 12, 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest.withValues(alpha: 0.65),
+                    color: scheme.surfaceContainerHighest.withValues(
+                      alpha: 0.65,
+                    ),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.28)),
+                    border: Border.all(
+                      color: scheme.outlineVariant.withValues(alpha: 0.28),
+                    ),
                   ),
                   child: Wrap(
                     spacing: 10,
@@ -128,7 +164,11 @@ class _DailyhistoryState extends State<Dailyhistory> {
                         decoration: BoxDecoration(
                           color: scheme.surface.withValues(alpha: 0.72),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.26)),
+                          border: Border.all(
+                            color: scheme.outlineVariant.withValues(
+                              alpha: 0.26,
+                            ),
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,7 +178,10 @@ class _DailyhistoryState extends State<Dailyhistory> {
                               children: [
                                 Text(
                                   formatDate(date),
-                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                                 Text(
                                   pass ? "PASS" : "FAIL",
@@ -152,7 +195,9 @@ class _DailyhistoryState extends State<Dailyhistory> {
                             const Divider(),
                             ...tasks.map((task) {
                               return Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                ),
                                 child: Row(
                                   children: [
                                     Container(
@@ -165,10 +210,20 @@ class _DailyhistoryState extends State<Dailyhistory> {
                                       ),
                                     ),
                                     Expanded(child: Text(task.title)),
+                                    IconButton(
+                                      tooltip: 'Edit task',
+                                      onPressed: () => _editTask(date, task),
+                                      icon: const Icon(
+                                        Icons.edit_outlined,
+                                        size: 18,
+                                      ),
+                                    ),
                                     Text(
                                       task.isDone ? "Done" : "Pending",
                                       style: TextStyle(
-                                        color: task.isDone ? Colors.green : scheme.error,
+                                        color: task.isDone
+                                            ? Colors.green
+                                            : scheme.error,
                                       ),
                                     ),
                                   ],

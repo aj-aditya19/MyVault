@@ -2,6 +2,7 @@ import 'package:app/Screens/Task/daily_checkin_screen.dart';
 import 'package:app/Screens/Task/dailyhistory.dart';
 import 'package:app/Screens/Task/task_form_sheet.dart';
 import 'package:app/core/models/task_model.dart';
+// import 'package:app/core/services/try.dart';
 import 'package:app/core/services/notification_service.dart';
 import 'package:app/core/services/storage_service.dart';
 import 'package:app/core/widgets/common_widgets.dart';
@@ -23,15 +24,26 @@ class _DailyTaskState extends State<DailyTask> {
 
   Map<String, List<TaskItem>> _allTasks = {};
   bool _loading = true;
+  DateTime _selectedDate = DateTime.now();
 
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
   TaskPriority? _priorityFilter;
   _StatusFilter _statusFilter = _StatusFilter.all;
 
-  String get _todayKey => dayKeyFor(DateTime.now());
+  String get _todayKey => dayKeyFor(_selectedDate);
 
   List<TaskItem> get _todayTasks => _allTasks[_todayKey] ?? [];
+
+  Future<void> _pickDay() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
+    );
+    if (picked != null) setState(() => _selectedDate = picked);
+  }
 
   @override
   void initState() {
@@ -80,6 +92,7 @@ class _DailyTaskState extends State<DailyTask> {
         entry.key: entry.value.map((t) => t.toJson()).toList(),
     };
     await StorageService.write(_boxName, payload);
+    // await DailyReminderService.schedule();
   }
 
   Future<void> _syncReminder(TaskItem task) async {
@@ -229,8 +242,6 @@ class _DailyTaskState extends State<DailyTask> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final now = DateTime.now();
-    final dayNumber = now.difference(DateTime(now.year, 1, 1)).inDays + 1;
 
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
@@ -250,13 +261,21 @@ class _DailyTaskState extends State<DailyTask> {
                 TextSpan(
                   children: [
                     const TextSpan(
-                      text: 'Day: ',
+                      text: 'Date: ',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    TextSpan(text: '$dayNumber/365'),
+                    TextSpan(
+                      text:
+                          '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                    ),
                   ],
                 ),
                 style: const TextStyle(fontSize: 16),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: _pickDay,
+                icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                label: const Text('Change date'),
               ),
               FilledButton.icon(
                 onPressed: () => _openTaskForm(),

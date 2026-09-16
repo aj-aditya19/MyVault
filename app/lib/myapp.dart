@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:app/Screens/Auth/auth_screen.dart';
 import 'package:app/Screens/home_screen.dart';
+// import 'package:app/core/services/try.dart';
 import 'package:app/core/services/storage_service.dart';
 import 'package:app/core/services/sync_manager.dart';
 
@@ -11,7 +12,7 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   ThemeMode _themeMode = ThemeMode.dark;
   bool _isBootstrapping = true;
   bool _showAuthGate = false;
@@ -19,7 +20,25 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _bootstrapAppEntry();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Whenever the user comes back to the app, re-check whether today's
+    // task/budget or this week's task/budget have been set, so the
+    // reminder always reflects the current state instead of only what
+    // was true at cold-start.
+    if (state == AppLifecycleState.resumed) {
+      // DailyReminderService.schedule();
+    }
   }
 
   Future<void> _bootstrapAppEntry() async {

@@ -24,6 +24,7 @@ class _StudyLogScreenState extends State<StudyLogScreen> {
   List<StudySession> _sessions = [];
   bool _loading = true;
   String? _editingId;
+  DateTime _sessionDate = DateTime.now();
 
   @override
   void initState() {
@@ -63,6 +64,17 @@ class _StudyLogScreenState extends State<StudyLogScreen> {
     _topicController.clear();
     _durationController.text = '30';
     _notesController.clear();
+    _sessionDate = DateTime.now();
+  }
+
+  Future<void> _pickSessionDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _sessionDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) setState(() => _sessionDate = picked);
   }
 
   Future<void> _save() async {
@@ -89,7 +101,7 @@ class _StudyLogScreenState extends State<StudyLogScreen> {
             topic: topic,
             durationMinutes: duration,
             notes: _notesController.text.trim(),
-            date: DateTime.now(),
+            date: _sessionDate,
           ),
         );
       } else {
@@ -100,9 +112,11 @@ class _StudyLogScreenState extends State<StudyLogScreen> {
             topic: topic,
             durationMinutes: duration,
             notes: _notesController.text.trim(),
+            date: _sessionDate,
           );
         }
       }
+      _sessions.sort((a, b) => b.date.compareTo(a.date));
       _clearForm();
     });
 
@@ -122,6 +136,7 @@ class _StudyLogScreenState extends State<StudyLogScreen> {
       _topicController.text = session.topic;
       _durationController.text = session.durationMinutes.toString();
       _notesController.text = session.notes;
+      _sessionDate = session.date;
     });
   }
 
@@ -170,7 +185,10 @@ class _StudyLogScreenState extends State<StudyLogScreen> {
             children: [
               Text(
                 _editingId == null ? 'Log a study session' : 'Edit session',
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                ),
               ),
               const SizedBox(height: 10),
               TextField(
@@ -209,6 +227,14 @@ class _StudyLogScreenState extends State<StudyLogScreen> {
                 ),
               ),
               const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _pickSessionDate,
+                icon: const Icon(Icons.event_outlined),
+                label: Text(
+                  'Study date: ${_sessionDate.day}/${_sessionDate.month}/${_sessionDate.year}',
+                ),
+              ),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   if (_editingId != null)
@@ -225,7 +251,9 @@ class _StudyLogScreenState extends State<StudyLogScreen> {
                       icon: Icon(
                         _editingId == null ? Icons.add : Icons.save_outlined,
                       ),
-                      label: Text(_editingId == null ? 'Add Session' : 'Save Changes'),
+                      label: Text(
+                        _editingId == null ? 'Add Session' : 'Save Changes',
+                      ),
                     ),
                   ),
                 ],
@@ -236,7 +264,10 @@ class _StudyLogScreenState extends State<StudyLogScreen> {
         const SizedBox(height: 16),
         Text(
           'Recent sessions',
-          style: TextStyle(fontWeight: FontWeight.w700, color: scheme.onSurface),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: scheme.onSurface,
+          ),
         ),
         const SizedBox(height: 8),
         if (_sessions.isEmpty)
@@ -310,7 +341,11 @@ class _StudyLogScreenState extends State<StudyLogScreen> {
                     onPressed: () => _editSession(session),
                   ),
                   IconButton(
-                    icon: Icon(Icons.delete_outline, size: 19, color: scheme.error),
+                    icon: Icon(
+                      Icons.delete_outline,
+                      size: 19,
+                      color: scheme.error,
+                    ),
                     onPressed: () => _deleteSession(session.id),
                   ),
                 ],

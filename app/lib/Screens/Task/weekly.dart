@@ -1,6 +1,7 @@
 import 'package:app/Screens/Task/weeklyhistory.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
+// import 'package:app/core/services/try.dart';
 import 'package:app/core/services/storage_service.dart';
 
 class WeeklyTask extends StatefulWidget {
@@ -72,6 +73,7 @@ class _WeeklyTaskState extends State<WeeklyTask> {
 
   Future<void> saveTasks() async {
     await StorageService.write(_boxName, allWeeklyTasks);
+    // await DailyReminderService.schedule();
   }
 
   @override

@@ -1,4 +1,5 @@
 import 'package:app/core/services/notification_service.dart';
+// import 'package:app/core/services/try.dart';
 import 'package:app/core/services/pin_service.dart';
 import 'package:app/core/services/sync_manager.dart';
 import 'package:app/myapp.dart';
@@ -12,5 +13,6 @@ Future<void> main() async {
   await dotenv.load(fileName: '.env');
   await SyncManager.initialize();
   await NotificationService.instance.init();
+  // await DailyReminderService.schedule();
   runApp(ChangeNotifierProvider(create: (_) => PinService(), child: MyApp()));
 }

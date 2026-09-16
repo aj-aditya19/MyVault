@@ -127,10 +127,12 @@ class NotificationService {
     }
   }
 
-  Future<void> scheduleDailySummary({
+  Future<void> scheduleRecurringAt({
+    required int id,
+    String title = 'MyVault',
     required String body,
-    int hour = 8,
-    int minute = 0,
+    required int hour,
+    required int minute,
   }) async {
     if (!_initialized) await init();
 
@@ -149,8 +151,8 @@ class NotificationService {
 
     try {
       await _plugin.zonedSchedule(
-        id: dailySummaryId,
-        title: 'MyVault — Today',
+        id: id,
+        title: title,
         body: body,
         scheduledDate: scheduled,
         notificationDetails: _details,
@@ -158,8 +160,22 @@ class NotificationService {
         matchDateTimeComponents: DateTimeComponents.time,
       );
     } catch (e) {
-      debugPrint('NotificationService: failed to schedule daily summary: $e');
+      debugPrint('NotificationService: failed to schedule "$title": $e');
     }
+  }
+
+  Future<void> scheduleDailySummary({
+    required String body,
+    int hour = 8,
+    int minute = 0,
+  }) async {
+    await scheduleRecurringAt(
+      id: dailySummaryId,
+      title: 'MyVault — Today',
+      body: body,
+      hour: hour,
+      minute: minute,
+    );
   }
 
   Future<void> showNow({required String title, required String body}) async {

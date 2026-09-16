@@ -332,22 +332,22 @@ class SyncManager {
     return null;
   }
 
-  static bool _isEqual(dynamic a, dynamic b) {
-    if (a is Map && b is Map) {
-      final left = Map<String, dynamic>.from(a);
-      final right = Map<String, dynamic>.from(b);
-      return left.length == right.length &&
-          left.keys.every(
-            (key) => right.containsKey(key) && _isEqual(left[key], right[key]),
-          );
-    }
-    if (a is List && b is List) {
-      return a.length == b.length &&
-          List.generate(
-            a.length,
-            (index) => _isEqual(a[index], b[index]),
-          ).every((item) => item);
-    }
-    return a == b;
-  }
+  // static bool _isEqual(dynamic a, dynamic b) {
+  //   if (a is Map && b is Map) {
+  //     final left = Map<String, dynamic>.from(a);
+  //     final right = Map<String, dynamic>.from(b);
+  //     return left.length == right.length &&
+  //         left.keys.every(
+  //           (key) => right.containsKey(key) && _isEqual(left[key], right[key]),
+  //         );
+  //   }
+  //   if (a is List && b is List) {
+  //     return a.length == b.length &&
+  //         List.generate(
+  //           a.length,
+  //           (index) => _isEqual(a[index], b[index]),
+  //         ).every((item) => item);
+  //   }
+  //   return a == b;
+  // }
 }

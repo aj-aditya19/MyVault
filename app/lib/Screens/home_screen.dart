@@ -3,6 +3,7 @@ import 'package:app/Other/Drawer.dart';
 import 'package:app/Other/NavigateBar.dart';
 import 'package:app/Screens/Dashboard/dashboard_screen.dart';
 import 'package:app/Screens/Money/moneyhome_screen.dart';
+import 'package:app/Screens/Schedule/schedule_screen.dart';
 import 'package:app/Screens/Study/study_home_screen.dart';
 import 'package:app/Screens/Task/taskhome_screen.dart';
 import 'package:app/core/utils/responsive.dart';
@@ -39,12 +40,12 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  List<Widget> get screens => [
+  List<Widget> get screens => [ 
     DashboardScreen(key: ValueKey('dash-$_dashboardTick'), onOpenTab: _goToTab),
     Taskhome(
       themeMode: widget.themeMode,
       onThemeModeChanged: widget.onThemeModeChanged,
-    ),
+    ),  
     StudyHomeScreen(),
     Moneyhome(
       themeMode: widget.themeMode,

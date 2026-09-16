@@ -25,7 +25,7 @@ class _DailyCheckinScreenState extends State<DailyCheckinScreen> {
 
   String get _today {
     final now = DateTime.now();
-    return '${now.year}-${now.month}-${now.day}';
+    return '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -41,13 +41,13 @@ class _DailyCheckinScreenState extends State<DailyCheckinScreen> {
 
   Future<void> _loadConstantGoals() async {
     try {
-      final decoded = await StorageService.read<dynamic>(
-        _goalsBox,
-        <dynamic>[],
-      );
-      if (decoded is List) {
-        _constantGoals = decoded.map((e) => e.toString()).toList();
-      }
+      final decoded = await StorageService.readMap(_goalsBox);
+      final rawGoals = (decoded['goals'] as List?) ?? const [];
+      _constantGoals = rawGoals
+          .whereType<Map>()
+          .map((g) => g['name']?.toString() ?? '')
+          .where((name) => name.isNotEmpty)
+          .toList();
     } catch (_) {
       _constantGoals = [];
     }
