@@ -12,6 +12,7 @@ class Quoteshome extends StatefulWidget {
 class _QuoteshomeState extends State<Quoteshome> {
   final TextEditingController controller = TextEditingController();
   List<String> quotesList = [];
+  bool _loading = true;
 
   static const String _boxName = 'quotes_file';
 
@@ -32,8 +33,10 @@ class _QuoteshomeState extends State<Quoteshome> {
       }
     }
 
+    if (!mounted) return;
     setState(() {
       quotesList = List<String>.from(decoded);
+      _loading = false;
     });
   }
 
@@ -47,56 +50,84 @@ class _QuoteshomeState extends State<Quoteshome> {
     inifile();
   }
 
-  void addQuote() async {
-    final text = controller.text.trim();
-    if (text.isNotEmpty) {
-      setState(() {
-        quotesList.add(text);
-        controller.clear();
-      });
-      await saveQuotes();
-    }
-  }
-
   @override
   void dispose() {
     controller.dispose();
     super.dispose();
   }
 
-  void editQuote(int index) {
-    controller.text = quotesList[index];
-    showDialog(
+  Future<void> _openQuoteForm({int? editIndex}) async {
+    controller.text = editIndex != null ? quotesList[editIndex] : '';
+    final scheme = Theme.of(context).colorScheme;
+
+    final saved = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Edit Quote"),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(border: OutlineInputBorder()),
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: scheme.surface,
+        surfaceTintColor: scheme.surfaceTint,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(editIndex == null ? 'Add Quote' : 'Edit Quote'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: 'Something that keeps you going…',
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                setState(() {
-                  quotesList[index] = controller.text;
-                  controller.clear();
-                });
-                await saveQuotes();
-                Navigator.pop(context);
-              },
-              child: const Text("Save"),
-            ),
-          ],
-        );
-      },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
     );
+
+    if (saved != true) return;
+    final text = controller.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() {
+      if (editIndex == null) {
+        quotesList.add(text);
+      } else {
+        quotesList[editIndex] = text;
+      }
+      controller.clear();
+    });
+    await saveQuotes();
+  }
+
+  Future<bool> _confirmDelete() async {
+    final scheme = Theme.of(context).colorScheme;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: scheme.surface,
+        surfaceTintColor: scheme.surfaceTint,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete quote?'),
+        content: const Text('This quote will be removed.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: scheme.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
   }
 
   @override
@@ -105,91 +136,118 @@ class _QuoteshomeState extends State<Quoteshome> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Quotes"),
+        title: const Text('Quotes'),
         backgroundColor: Colors.transparent,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    decoration: const InputDecoration(
-                      hintText: "Enter a Quote",
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _openQuoteForm(),
+        child: const Icon(Icons.add),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : quotesList.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.format_quote_rounded,
+                      size: 56,
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: addQuote,
-                  child: const Icon(Icons.add),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: ListView.builder(
-                itemCount: quotesList.length,
-                itemBuilder: (context, index) {
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: scheme.surface.withValues(alpha: 0.72),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: scheme.outlineVariant.withValues(alpha: 0.28),
+                    const SizedBox(height: 14),
+                    Text(
+                      'No quotes yet',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onSurface,
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
+                    const SizedBox(height: 6),
+                    Text(
+                      'Tap + to save a line that keeps you motivated.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+              itemCount: quotesList.length,
+              itemBuilder: (context, index) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+                  decoration: BoxDecoration(
+                    color: scheme.surface.withValues(alpha: 0.72),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: scheme.outlineVariant.withValues(alpha: 0.28),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.format_quote_rounded,
+                        size: 20,
+                        color: scheme.primary.withValues(alpha: 0.6),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 6),
                           child: Text(
                             quotesList[index],
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 3,
                             style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              fontStyle: FontStyle.italic,
                               color: scheme.onSurface,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: Icon(Icons.edit, color: scheme.primary),
-                              onPressed: () {
-                                editQuote(index);
-                              },
+                      ),
+                      Column(
+                        children: [
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            icon: Icon(
+                              Icons.edit_outlined,
+                              size: 18,
+                              color: scheme.primary,
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () async {
-                                setState(() {
-                                  quotesList.removeAt(index);
-                                });
-                                await saveQuotes();
-                              },
+                            onPressed: () => _openQuoteForm(editIndex: index),
+                          ),
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            icon: Icon(
+                              Icons.delete_outline_rounded,
+                              size: 18,
+                              color: scheme.error,
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+                            onPressed: () async {
+                              final ok = await _confirmDelete();
+                              if (!ok) return;
+                              setState(() => quotesList.removeAt(index));
+                              await saveQuotes();
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
-          ],
-        ),
-      ),
     );
   }
 }

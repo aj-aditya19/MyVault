@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'package:app/core/models/schedule_event_model.dart';
-import 'package:app/core/models/task_model.dart';
-// import 'package:app/core/services/try.dart';
+import 'package:app/core/services/daily_reminder_service.dart';
 import 'package:app/core/services/storage_service.dart';
-import 'package:app/core/utils/responsive.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -15,9 +13,6 @@ class ScheduleScreen extends StatefulWidget {
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
   static const String _boxName = 'schedule_events';
-  static const int _hourStart = 6;
-  static const int _hourEnd = 22; // exclusive-ish upper bound for the grid
-  static const double _hourHeight = 60;
   static const List<String> _monthNames = [
     'January',
     'February',
@@ -45,7 +40,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   List<ScheduleEvent> _events = [];
   bool _loading = true;
 
-  // 'day' | 'week' | 'month'
   String _viewMode = 'week';
   DateTime _selectedDate = _startOfDay(DateTime.now());
   DateTime _anchor = _startOfDay(DateTime.now());
@@ -83,19 +77,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       _boxName,
       _events.map((e) => e.toJson()).toList(),
     );
-    // await DailyReminderService.schedule();
+    await DailyReminderService.schedule();
   }
 
   List<ScheduleEvent> _eventsOn(DateTime day) {
     final key = scheduleDateKey(day);
     return _events.where((e) => scheduleDateKey(e.date) == key).toList()
       ..sort((a, b) => a.startMinutes.compareTo(b.startMinutes));
-  }
-
-  List<ScheduleEvent> get _upcoming {
-    final now = DateTime.now();
-    return _events.where((e) => e.endDateTime.isAfter(now)).toList()
-      ..sort((a, b) => a.startDateTime.compareTo(b.startDateTime));
   }
 
   String _eventStatus(ScheduleEvent e) {
@@ -131,67 +119,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Future<void> _deleteEvent(String id) async {
     setState(() => _events.removeWhere((e) => e.id == id));
     await _persist();
-  }
-
-  Future<void> _quickAddTask() async {
-    final controller = TextEditingController();
-    final title = await showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Quick add task'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: "e.g. Reply to emails"),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () =>
-                Navigator.pop(dialogContext, controller.text.trim()),
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-    if (title == null || title.isEmpty || !mounted) return;
-
-    const tasksBox = 'tasks';
-    final tasks = await StorageService.readMap(tasksBox);
-    final key = dayKeyFor(DateTime.now());
-    final list = ((tasks[key] as List?) ?? [])
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
-    list.add(
-      TaskItem(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        title: title,
-        createdAt: DateTime.now(),
-        dayKey: key,
-      ).toJson(),
-    );
-    tasks[key] = list;
-    await StorageService.write(tasksBox, tasks);
-    // await DailyReminderService.schedule();
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Added "$title" to today\'s tasks.')),
-      );
-    }
-  }
-
-  void _quickAddNote() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          "Notes aren't part of MyVault yet — added to the roadmap.",
-        ),
-      ),
-    );
   }
 
   Future<void> _openEventForm({
@@ -392,124 +319,32 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    return Responsive.isMobile(context)
-        ? _buildMobileLayout(context)
-        : _buildDesktopLayout(context);
-  }
-
-  // ---------------------------------------------------------------------
-  // Desktop / tablet layout — week grid + sidebar (matches the web mockup)
-  // ---------------------------------------------------------------------
-
-  Widget _buildDesktopLayout(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final header = _buildScheduleHeader(scheme);
-          final panelBox = _buildSchedulePanelBox(scheme);
-          final sidebar = _buildSidebar(scheme);
-
-          // A 300px sidebar next to the grid only makes sense once there's
-          // real room left over for the grid itself — otherwise stack them.
-          if (constraints.maxWidth < 900) {
-            return SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  header,
-                  const SizedBox(height: 16),
-                  SizedBox(height: 620, child: panelBox),
-                  const SizedBox(height: 16),
-                  sidebar,
-                ],
-              ),
-            );
-          }
-
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 3,
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Schedule'),
+        backgroundColor: Colors.transparent,
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _openEventForm(defaultDate: _selectedDate),
+        child: const Icon(Icons.add),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    header,
-                    const SizedBox(height: 16),
-                    Expanded(child: panelBox),
+                    _buildNavRow(scheme),
+                    const SizedBox(height: 12),
+                    Expanded(child: _buildBody(scheme)),
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
-              SizedBox(width: 300, child: sidebar),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildScheduleHeader(ColorScheme scheme) {
-    return Row(
-      children: [
-        Icon(Icons.calendar_month_rounded, color: scheme.primary, size: 28),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Schedule',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: scheme.onSurface,
-                ),
-              ),
-              Text(
-                'Plan your day, stay consistent, achieve your goals.',
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 12.5,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        FilledButton.icon(
-          onPressed: () => _openEventForm(defaultDate: _selectedDate),
-          icon: const Icon(Icons.add),
-          label: const Text('Add Event'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSchedulePanelBox(ColorScheme scheme) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildDesktopNavRow(scheme),
-          const SizedBox(height: 12),
-          Expanded(child: _buildDesktopBody(scheme)),
-        ],
-      ),
+            ),
     );
   }
 
@@ -523,688 +358,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     return '${_monthNames[_anchor.month - 1]} ${_anchor.year}';
   }
 
-  Widget _buildDesktopNavRow(ColorScheme scheme) {
-    final label = _navLabel();
-
-    final arrowsAndLabel = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          onPressed: () => setState(() => _shiftAnchor(-1)),
-          icon: const Icon(Icons.chevron_left_rounded),
-        ),
-        Flexible(
-          child: Text(
-            label,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: scheme.onSurface,
-            ),
-          ),
-        ),
-        IconButton(
-          onPressed: () => setState(() => _shiftAnchor(1)),
-          icon: const Icon(Icons.chevron_right_rounded),
-        ),
-      ],
-    );
-
-    final segmented = SegmentedButton<String>(
-      segments: const [
-        ButtonSegment(value: 'day', label: Text('Day')),
-        ButtonSegment(value: 'week', label: Text('Week')),
-        ButtonSegment(value: 'month', label: Text('Month')),
-      ],
-      selected: {_viewMode},
-      onSelectionChanged: (sel) => setState(() => _viewMode = sel.first),
-    );
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Below this width the arrows+label and the segmented toggle can't
-        // sit on one line without clipping, so stack them instead.
-        if (constraints.maxWidth < 480) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              arrowsAndLabel,
-              const SizedBox(height: 8),
-              SizedBox(width: double.infinity, child: segmented),
-            ],
-          );
-        }
-        return Row(
-          children: [
-            Flexible(child: arrowsAndLabel),
-            const Spacer(),
-            segmented,
-          ],
-        );
-      },
-    );
-  }
-
-  void _shiftAnchor(int direction) {
-    if (_viewMode == 'week') {
-      _anchor = _anchor.add(Duration(days: 7 * direction));
-    } else if (_viewMode == 'day') {
-      _selectedDate = _selectedDate.add(Duration(days: direction));
-      _anchor = _selectedDate;
-    } else {
-      _anchor = DateTime(_anchor.year, _anchor.month + direction, 1);
-    }
-  }
-
-  Widget _buildDesktopBody(ColorScheme scheme) {
-    switch (_viewMode) {
-      case 'day':
-        return _buildTimeGrid(scheme, [_selectedDate]);
-      case 'month':
-        return _buildMonthGrid(scheme);
-      case 'week':
-      default:
-        return _buildTimeGrid(scheme, _weekDaysFor(_anchor));
-    }
-  }
-
-  List<DateTime> _weekDaysFor(DateTime anchor) {
-    final monday = _mondayOf(anchor);
-    return List.generate(7, (i) => monday.add(Duration(days: i)));
-  }
-
-  Widget _buildTimeGrid(ColorScheme scheme, List<DateTime> days) {
-    final hourCount = _hourEnd - _hourStart;
-    final gridHeight = hourCount * _hourHeight;
-
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Day headers
-          Row(
-            children: [
-              const SizedBox(width: 52),
-              ...days.map((day) {
-                final isToday = scheduleDateKey(day) == scheduleDateKey(_today);
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() {
-                      _selectedDate = day;
-                      if (_viewMode == 'week') _viewMode = 'day';
-                    }),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: isToday
-                            ? scheme.primary.withValues(alpha: 0.12)
-                            : null,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _weekdayShort[day.weekday - 1],
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                          Text(
-                            '${day.day}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: isToday
-                                  ? scheme.primary
-                                  : scheme.onSurface,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ],
-          ),
-          const Divider(height: 1),
-          SizedBox(
-            height: gridHeight,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 52,
-                  height: gridHeight,
-                  child: Stack(
-                    children: List.generate(hourCount + 1, (i) {
-                      final hour = _hourStart + i;
-                      final label = hour == 12
-                          ? '12 PM'
-                          : hour > 12
-                          ? '${hour - 12} PM'
-                          : '$hour AM';
-                      return Positioned(
-                        top: i * _hourHeight - 7,
-                        right: 6,
-                        child: Text(
-                          label,
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                ),
-                ...days.map(
-                  (day) => Expanded(
-                    child: _buildDayColumn(scheme, day, gridHeight, hourCount),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDayColumn(
-    ColorScheme scheme,
-    DateTime day,
-    double gridHeight,
-    int hourCount,
-  ) {
-    final dayEvents = _eventsOn(day);
-    final rangeStart = _hourStart * 60;
-    final rangeEnd = _hourEnd * 60;
-
-    return Container(
-      height: gridHeight,
-      decoration: BoxDecoration(
-        border: Border(
-          left: BorderSide(
-            color: scheme.outlineVariant.withValues(alpha: 0.25),
-          ),
-        ),
-      ),
-      child: Stack(
-        children: [
-          Column(
-            children: List.generate(
-              hourCount,
-              (_) => Container(
-                height: _hourHeight,
-                decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(
-                      color: scheme.outlineVariant.withValues(alpha: 0.15),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          ...dayEvents.map((event) {
-            final clampedStart = event.startMinutes.clamp(rangeStart, rangeEnd);
-            final clampedEnd = event.endMinutes.clamp(rangeStart, rangeEnd);
-            if (clampedEnd <= clampedStart) return const SizedBox.shrink();
-            final top = (clampedStart - rangeStart) / 60 * _hourHeight;
-            final height = ((clampedEnd - clampedStart) / 60 * _hourHeight)
-                .clamp(22.0, gridHeight);
-
-            return Positioned(
-              top: top,
-              left: 2,
-              right: 2,
-              height: height,
-              child: GestureDetector(
-                onTap: () => _openEventForm(existing: event),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: event.category.color.withValues(
-                      alpha: event.isDone ? 0.35 : 0.85,
-                    ),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        event.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11.5,
-                        ),
-                      ),
-                      if (height > 34)
-                        Text(
-                          '${event.start.format(context)} – ${event.end.format(context)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 9.5,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMonthGrid(ColorScheme scheme) {
-    final firstOfMonth = DateTime(_anchor.year, _anchor.month, 1);
-    final lastOfMonth = DateTime(_anchor.year, _anchor.month + 1, 0);
-    final leadingBlanks = firstOfMonth.weekday - 1;
-    final totalCells = leadingBlanks + lastOfMonth.day;
-    final rows = (totalCells / 7).ceil();
-
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Row(
-            children: _weekdayShort
-                .map(
-                  (d) => Expanded(
-                    child: Center(
-                      child: Text(
-                        d,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
-          const SizedBox(height: 4),
-          for (var r = 0; r < rows; r++)
-            Row(
-              children: List.generate(7, (c) {
-                final cellIndex = r * 7 + c;
-                final dayNum = cellIndex - leadingBlanks + 1;
-                if (dayNum < 1 || dayNum > lastOfMonth.day) {
-                  return const Expanded(child: SizedBox(height: 78));
-                }
-                final day = DateTime(_anchor.year, _anchor.month, dayNum);
-                final dayEvents = _eventsOn(day);
-                final isToday = scheduleDateKey(day) == scheduleDateKey(_today);
-
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() {
-                      _selectedDate = day;
-                      _viewMode = 'day';
-                    }),
-                    child: Container(
-                      height: 78,
-                      margin: const EdgeInsets.all(2),
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: isToday
-                            ? scheme.primary.withValues(alpha: 0.1)
-                            : scheme.surfaceContainerHighest.withValues(
-                                alpha: 0.3,
-                              ),
-                        borderRadius: BorderRadius.circular(8),
-                        border: isToday
-                            ? Border.all(color: scheme.primary, width: 1.2)
-                            : null,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '$dayNum',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: isToday
-                                  ? scheme.primary
-                                  : scheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Wrap(
-                            spacing: 3,
-                            runSpacing: 3,
-                            children: [
-                              for (final e in dayEvents.take(3))
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: BoxDecoration(
-                                    color: e.category.color,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              if (dayEvents.length > 3)
-                                Text(
-                                  '+${dayEvents.length - 3}',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSidebar(ColorScheme scheme) {
-    final todayEvents = _eventsOn(_today);
-    final doneCount = todayEvents.where((e) => e.isDone).length;
-    final progress = todayEvents.isEmpty ? 0.0 : doneCount / todayEvents.length;
-    final upcoming = _upcoming
-        .where((e) => !_isSameDay(e.date, _today))
-        .take(3)
-        .toList();
-
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: scheme.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: scheme.outlineVariant.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Today · ${_weekdayShort[_today.weekday - 1]}, ${_monthNames[_today.month - 1].substring(0, 3)} ${_today.day}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: scheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '$doneCount / ${todayEvents.length} tasks completed',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(value: progress, minHeight: 6),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          _sidebarListCard(
-            scheme,
-            title: "Today's Schedule",
-            child: todayEvents.isEmpty
-                ? Text(
-                    'Nothing scheduled today yet.',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  )
-                : Column(
-                    children: todayEvents
-                        .map((e) => _sidebarEventTile(scheme, e))
-                        .toList(),
-                  ),
-          ),
-          const SizedBox(height: 12),
-          _sidebarListCard(
-            scheme,
-            title: 'Upcoming Events',
-            child: upcoming.isEmpty
-                ? Text(
-                    'Nothing else on the horizon.',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  )
-                : Column(
-                    children: upcoming.map((e) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          children: [
-                            Icon(
-                              e.category.icon,
-                              size: 16,
-                              color: e.category.color,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    e.title,
-                                    style: TextStyle(
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: scheme.onSurface,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${e.date.day}/${e.date.month} · ${e.start.format(context)}',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: scheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-          ),
-          const SizedBox(height: 12),
-          _sidebarListCard(
-            scheme,
-            title: 'Quick Add',
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _quickAddTask,
-                    icon: const Icon(Icons.add_task, size: 16),
-                    label: const Text('Task'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _openEventForm(defaultDate: _selectedDate),
-                    icon: const Icon(Icons.event, size: 16),
-                    label: const Text('Event'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _quickAddNote,
-                    icon: const Icon(Icons.note_add, size: 16),
-                    label: const Text('Note'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sidebarListCard(
-    ColorScheme scheme, {
-    required String title,
-    required Widget child,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: scheme.onSurface,
-            ),
-          ),
-          const SizedBox(height: 10),
-          child,
-        ],
-      ),
-    );
-  }
-
-  Widget _sidebarEventTile(ColorScheme scheme, ScheduleEvent e) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => _toggleDone(e.id),
-            child: Icon(
-              e.isDone ? Icons.check_circle : Icons.circle_outlined,
-              size: 20,
-              color: e.isDone
-                  ? const Color(0xFF22C55E)
-                  : scheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Icon(e.category.icon, size: 16, color: e.category.color),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  e.title,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: scheme.onSurface,
-                    decoration: e.isDone ? TextDecoration.lineThrough : null,
-                  ),
-                ),
-                Text(
-                  '${e.start.format(context)} – ${e.end.format(context)}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: () => _openEventForm(existing: e),
-            child: Icon(
-              Icons.chevron_right_rounded,
-              size: 18,
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  bool _isSameDay(DateTime a, DateTime b) =>
-      scheduleDateKey(a) == scheduleDateKey(b);
-
-  // ---------------------------------------------------------------------
-  // Mobile layout — day strip + vertical timeline agenda (matches phone mockup)
-  // plus Week and Month views, reachable via the same nav row as desktop.
-  // ---------------------------------------------------------------------
-
-  Widget _buildMobileLayout(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openEventForm(defaultDate: _selectedDate),
-        child: const Icon(Icons.add),
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Schedule',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: scheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 12),
-              _buildMobileNavRow(scheme),
-              const SizedBox(height: 12),
-              Expanded(child: _buildMobileBody(scheme)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMobileNavRow(ColorScheme scheme) {
+  Widget _buildNavRow(ColorScheme scheme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1231,6 +385,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             ),
           ],
         ),
+        const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
           child: SegmentedButton<String>(
@@ -1247,19 +402,35 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  Widget _buildMobileBody(ColorScheme scheme) {
+  void _shiftAnchor(int direction) {
+    if (_viewMode == 'week') {
+      _anchor = _anchor.add(Duration(days: 7 * direction));
+    } else if (_viewMode == 'day') {
+      _selectedDate = _selectedDate.add(Duration(days: direction));
+      _anchor = _selectedDate;
+    } else {
+      _anchor = DateTime(_anchor.year, _anchor.month + direction, 1);
+    }
+  }
+
+  List<DateTime> _weekDaysFor(DateTime anchor) {
+    final monday = _mondayOf(anchor);
+    return List.generate(7, (i) => monday.add(Duration(days: i)));
+  }
+
+  Widget _buildBody(ColorScheme scheme) {
     switch (_viewMode) {
       case 'week':
-        return _buildMobileWeekList(scheme);
+        return _buildWeekList(scheme);
       case 'month':
         return SingleChildScrollView(child: _buildMonthGrid(scheme));
       case 'day':
       default:
-        return _buildMobileDayAgenda(scheme);
+        return _buildDayAgenda(scheme);
     }
   }
 
-  Widget _buildMobileWeekList(ColorScheme scheme) {
+  Widget _buildWeekList(ColorScheme scheme) {
     final days = _weekDaysFor(_anchor);
     return ListView.separated(
       itemCount: days.length,
@@ -1373,7 +544,114 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  Widget _buildMobileDayAgenda(ColorScheme scheme) {
+  Widget _buildMonthGrid(ColorScheme scheme) {
+    final firstOfMonth = DateTime(_anchor.year, _anchor.month, 1);
+    final lastOfMonth = DateTime(_anchor.year, _anchor.month + 1, 0);
+    final leadingBlanks = firstOfMonth.weekday - 1;
+    final totalCells = leadingBlanks + lastOfMonth.day;
+    final rows = (totalCells / 7).ceil();
+
+    return Column(
+      children: [
+        Row(
+          children: _weekdayShort
+              .map(
+                (d) => Expanded(
+                  child: Center(
+                    child: Text(
+                      d,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+        const SizedBox(height: 4),
+        for (var r = 0; r < rows; r++)
+          Row(
+            children: List.generate(7, (c) {
+              final cellIndex = r * 7 + c;
+              final dayNum = cellIndex - leadingBlanks + 1;
+              if (dayNum < 1 || dayNum > lastOfMonth.day) {
+                return const Expanded(child: SizedBox(height: 78));
+              }
+              final day = DateTime(_anchor.year, _anchor.month, dayNum);
+              final dayEvents = _eventsOn(day);
+              final isToday = scheduleDateKey(day) == scheduleDateKey(_today);
+
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() {
+                    _selectedDate = day;
+                    _viewMode = 'day';
+                  }),
+                  child: Container(
+                    height: 78,
+                    margin: const EdgeInsets.all(2),
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: isToday
+                          ? scheme.primary.withValues(alpha: 0.1)
+                          : scheme.surfaceContainerHighest.withValues(
+                              alpha: 0.3,
+                            ),
+                      borderRadius: BorderRadius.circular(8),
+                      border: isToday
+                          ? Border.all(color: scheme.primary, width: 1.2)
+                          : null,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$dayNum',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isToday ? scheme.primary : scheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Wrap(
+                          spacing: 3,
+                          runSpacing: 3,
+                          children: [
+                            for (final e in dayEvents.take(3))
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: e.category.color,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            if (dayEvents.length > 3)
+                              Text(
+                                '+${dayEvents.length - 3}',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildDayAgenda(ColorScheme scheme) {
     final weekDays = _weekDaysFor(_selectedDate);
     final dayEvents = _eventsOn(_selectedDate);
     final doneCount = dayEvents.where((e) => e.isDone).length;
@@ -1467,7 +745,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 )
               : ListView(
                   children: [
-                    ...dayEvents.map((e) => _mobileEventTile(scheme, e)),
+                    ...dayEvents.map((e) => _eventTile(scheme, e)),
                     if (tomorrowEvents.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Container(
@@ -1543,7 +821,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  Widget _mobileEventTile(ColorScheme scheme, ScheduleEvent e) {
+  Widget _eventTile(ColorScheme scheme, ScheduleEvent e) {
     final status = _eventStatus(e);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -1661,4 +939,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       ),
     );
   }
+
+  bool _isSameDay(DateTime a, DateTime b) =>
+      scheduleDateKey(a) == scheduleDateKey(b);
 }

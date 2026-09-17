@@ -1,7 +1,6 @@
 import 'package:app/Screens/Money/moneyhistory.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-// import 'package:app/core/services/try.dart';
 import 'package:app/core/services/storage_service.dart';
 
 class Weekly extends StatefulWidget {
@@ -177,7 +176,6 @@ class _WeeklyState extends State<Weekly> {
     }
 
     await StorageService.write(_boxName, weeks);
-    // await DailyReminderService.schedule();
   }
 
   void setWeeklyBudget() {

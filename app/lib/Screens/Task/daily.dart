@@ -2,7 +2,7 @@ import 'package:app/Screens/Task/daily_checkin_screen.dart';
 import 'package:app/Screens/Task/dailyhistory.dart';
 import 'package:app/Screens/Task/task_form_sheet.dart';
 import 'package:app/core/models/task_model.dart';
-// import 'package:app/core/services/try.dart';
+import 'package:app/core/services/daily_reminder_service.dart';
 import 'package:app/core/services/notification_service.dart';
 import 'package:app/core/services/storage_service.dart';
 import 'package:app/core/widgets/common_widgets.dart';
@@ -92,7 +92,7 @@ class _DailyTaskState extends State<DailyTask> {
         entry.key: entry.value.map((t) => t.toJson()).toList(),
     };
     await StorageService.write(_boxName, payload);
-    // await DailyReminderService.schedule();
+    await DailyReminderService.schedule();
   }
 
   Future<void> _syncReminder(TaskItem task) async {

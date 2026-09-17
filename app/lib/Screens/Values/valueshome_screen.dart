@@ -12,6 +12,7 @@ class Valueshome extends StatefulWidget {
 class _ValueshomeState extends State<Valueshome> {
   final TextEditingController controller = TextEditingController();
   List<String> valuesList = [];
+  bool _loading = true;
 
   static const String _boxName = 'values_file';
 
@@ -32,8 +33,10 @@ class _ValueshomeState extends State<Valueshome> {
       }
     }
 
+    if (!mounted) return;
     setState(() {
       valuesList = List<String>.from(decoded);
+      _loading = false;
     });
   }
 
@@ -47,57 +50,84 @@ class _ValueshomeState extends State<Valueshome> {
     inifile();
   }
 
-  void addValue() async {
-    final text = controller.text.trim();
-    if (text.isNotEmpty) {
-      setState(() {
-        valuesList.add(text);
-        controller.clear();
-      });
-      await saveValues();
-    }
-  }
-
   @override
   void dispose() {
     controller.dispose();
     super.dispose();
   }
 
-  void editValue(int index) {
-    controller.text = valuesList[index];
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Edit Value"),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(border: OutlineInputBorder()),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                setState(() {
-                  valuesList[index] = controller.text;
-                  controller.clear();
-                });
+  Future<void> _openValueForm({int? editIndex}) async {
+    controller.text = editIndex != null ? valuesList[editIndex] : '';
+    final scheme = Theme.of(context).colorScheme;
 
-                await saveValues();
-                Navigator.pop(context);
-              },
-              child: const Text("Save"),
-            ),
-          ],
-        );
-      },
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: scheme.surface,
+        surfaceTintColor: scheme.surfaceTint,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(editIndex == null ? 'Add Value' : 'Edit Value'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 2,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: 'e.g. Honesty, Discipline, Growth',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
     );
+
+    if (saved != true) return;
+    final text = controller.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() {
+      if (editIndex == null) {
+        valuesList.add(text);
+      } else {
+        valuesList[editIndex] = text;
+      }
+      controller.clear();
+    });
+    await saveValues();
+  }
+
+  Future<bool> _confirmDelete(String value) async {
+    final scheme = Theme.of(context).colorScheme;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: scheme.surface,
+        surfaceTintColor: scheme.surfaceTint,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete value?'),
+        content: Text('"$value" will be removed.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: scheme.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
   }
 
   @override
@@ -106,92 +136,123 @@ class _ValueshomeState extends State<Valueshome> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Values"),
+        title: const Text('Values'),
         backgroundColor: Colors.transparent,
       ),
-
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    decoration: const InputDecoration(
-                      hintText: "Enter a Value",
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _openValueForm(),
+        child: const Icon(Icons.add),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : valuesList.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.favorite_outline_rounded,
+                      size: 56,
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                ElevatedButton(onPressed: addValue, child: const Text("+")),
-              ],
-            ),
-
-            const SizedBox(height: 20),
-
-            Expanded(
-              child: ListView.builder(
-                itemCount: valuesList.length,
-                itemBuilder: (context, index) {
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: scheme.surface.withValues(alpha: 0.72),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: scheme.outlineVariant.withValues(alpha: 0.28),
+                    const SizedBox(height: 14),
+                    Text(
+                      'No values added yet',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onSurface,
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            "${index + 1}-> ${valuesList[index]}",
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 2,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: scheme.onSurface,
-                            ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Tap + to write down what matters most to you.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+              itemCount: valuesList.length,
+              itemBuilder: (context, index) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: scheme.surface.withValues(alpha: 0.72),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: scheme.outlineVariant.withValues(alpha: 0.28),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: scheme.primary.withValues(alpha: 0.14),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: scheme.primary,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: Icon(Icons.edit, color: scheme.primary),
-                              onPressed: () {
-                                editValue(index);
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () async {
-                                setState(() {
-                                  valuesList.removeAt(index);
-                                });
-
-                                await saveValues();
-                              },
-                            ),
-                          ],
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          valuesList[index],
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                          style: TextStyle(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w600,
+                            color: scheme.onSurface,
+                          ),
                         ),
-                      ],
-                    ),
-                  );
-                },
-              ),
+                      ),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(
+                          Icons.edit_outlined,
+                          size: 19,
+                          color: scheme.primary,
+                        ),
+                        onPressed: () => _openValueForm(editIndex: index),
+                      ),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(
+                          Icons.delete_outline_rounded,
+                          size: 19,
+                          color: scheme.error,
+                        ),
+                        onPressed: () async {
+                          final ok = await _confirmDelete(valuesList[index]);
+                          if (!ok) return;
+                          setState(() => valuesList.removeAt(index));
+                          await saveValues();
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
-          ],
-        ),
-      ),
     );
   }
 }

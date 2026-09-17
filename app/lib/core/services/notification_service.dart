@@ -108,22 +108,38 @@ class NotificationService {
     required String body,
     required DateTime when,
   }) async {
-    if (!_initialized) await init();
-    if (when.isBefore(DateTime.now())) return;
+    if (!_initialized) {
+      await init();
+    }
 
-    final tzWhen = tz.TZDateTime.from(when, tz.local);
+    final now = DateTime.now();
+
+    if (!when.isAfter(now)) {
+      return;
+    }
+
+    final scheduledDate = tz.TZDateTime.from(when, tz.local);
 
     try {
+      await _plugin.cancel(id: id);
+
       await _plugin.zonedSchedule(
         id: id,
         title: title,
         body: body,
-        scheduledDate: tzWhen,
+        scheduledDate: scheduledDate,
         notificationDetails: _details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        payload: 'myvault:$id',
       );
-    } catch (e) {
-      debugPrint('NotificationService: failed to schedule "$title": $e');
+
+      debugPrint(
+        'MyVault notification scheduled: '
+        '$title at $scheduledDate',
+      );
+    } catch (e, stack) {
+      debugPrint('MyVault notification failed: $title\n$e');
+      debugPrintStack(stackTrace: stack);
     }
   }
 

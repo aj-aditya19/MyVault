@@ -151,8 +151,6 @@ class _Keypad extends StatelessWidget {
   }
 }
 
-/// Shown when a gated section already has a PIN - person must enter it
-/// (or use biometrics) to proceed.
 class PinEntryScreen extends StatefulWidget {
   final String sectionName;
   const PinEntryScreen({super.key, required this.sectionName});
@@ -326,8 +324,6 @@ class _PinEntryScreenState extends State<PinEntryScreen> {
   }
 }
 
-/// Shown the first time a person locks a section (no PIN set yet) and from
-/// Settings when changing the PIN.
 class PinSetupScreen extends StatefulWidget {
   final String sectionName;
   const PinSetupScreen({super.key, required this.sectionName});

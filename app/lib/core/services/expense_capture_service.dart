@@ -1,15 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:app/core/services/storage_service.dart';
 
-/// A quick "did you spend this?" confirmation flow, logging straight into
-/// the same 'weekly_money' box the Budget screen reads and writes.
-///
-/// Today this is triggered manually (e.g. a button, a share-sheet target,
-/// or you calling it right after some other event in your own code). It's
-/// built so that once real payment-notification capture exists (see the
-/// note at the bottom of this file), that code can call the exact same
-/// `promptExpenseConfirmation` function with the amount/merchant it parsed
-/// — no other change needed.
 class ExpenseCaptureService {
   ExpenseCaptureService._();
 
@@ -18,9 +9,6 @@ class ExpenseCaptureService {
   static int _currentWeekNumber(DateTime date) =>
       ((date.difference(DateTime(date.year, 1, 1)).inDays) ~/ 7) + 1;
 
-  /// Shows "Did you spend ₹[amount] on [merchant]?" with Yes / No, and if
-  /// Yes, asks for a one-line reason, then logs it as a spend against the
-  /// current week's budget. Returns true if it was logged.
   static Future<bool> promptExpenseConfirmation({
     required BuildContext context,
     required double amount,
@@ -133,34 +121,5 @@ class ExpenseCaptureService {
     }
 
     await StorageService.write(_boxName, weeks);
-    // await DailyReminderService.schedule();
   }
 }
-
-// ---------------------------------------------------------------------------
-// Roadmap note — wiring this up to Google Pay / PhonePe automatically
-// ---------------------------------------------------------------------------
-// MyVault is local-first and doesn't talk to any bank or UPI API, and Google
-// Pay has no public API for "tell me when the user spends money" — so true
-// automatic detection has to happen on-device, by reading the payment app's
-// own notifications. On Android that means:
-//
-//   1. Add a notification-listener plugin (e.g. `notification_listener_service`
-//      or a small custom platform channel) to pubspec.yaml.
-//   2. Declare the `BIND_NOTIFICATION_LISTENER_SERVICE` permission in
-//      AndroidManifest.xml and send the user to the system settings screen
-//      to grant "Notification access" to MyVault (this is a manual step the
-//      user does once, Android doesn't allow granting it silently).
-//   3. In the listener callback, filter for packages like
-//      `com.google.android.apps.nbu.paisa.user` (Google Pay) or
-//      `com.phonepe.app`, and parse the amount out of the notification text
-//      (payment apps show it in a fairly consistent "₹123 paid to X" format,
-//      but the exact wording changes across app versions/updates so this
-//      needs light regex + testing against your own device).
-//   4. Call `ExpenseCaptureService.promptExpenseConfirmation(...)` with the
-//      parsed amount/merchant — everything after that already works.
-//
-// This is iOS-impossible (Apple doesn't allow reading other apps'
-// notifications) and needs native Android permission work this text-only
-// change set can't include, so it's left as a documented next step rather
-// than a half-working plugin dependency guessed at here.

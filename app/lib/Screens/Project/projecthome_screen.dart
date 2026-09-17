@@ -13,19 +13,9 @@ class Projecthome extends StatefulWidget {
 
 class _ProjecthomeState extends State<Projecthome> {
   List<Map<String, String>> projects = [];
+  bool _loading = true;
 
   static const String _boxName = 'project_ideas';
-
-  final List<Map<String, String>> starterProjects = const [
-    // {
-    //   "name": "Portfolio Notes Board",
-    //   "desc":
-    //       "An idea board for logging experiments, release ideas, and design references.",
-    //   "tech": "Flutter, Encryption",
-    //   "start_date": "2026-05-10",
-    //   "end_date": "2026-06-02",
-    // },
-  ];
 
   @override
   void initState() {
@@ -51,18 +41,12 @@ class _ProjecthomeState extends State<Projecthome> {
       }
     }
 
-    final loadedProjects = decoded
+    projects = decoded
         .map<Map<String, String>>((item) => Map<String, String>.from(item))
         .toList();
 
-    if (loadedProjects.isEmpty) {
-      projects = List<Map<String, String>>.from(starterProjects);
-    } else {
-      projects = loadedProjects;
-    }
-
-    await saveProjects();
-    setState(() {});
+    if (!mounted) return;
+    setState(() => _loading = false);
   }
 
   Future<void> saveProjects() async {
@@ -76,160 +60,247 @@ class _ProjecthomeState extends State<Projecthome> {
     await saveProjects();
   }
 
+  Future<bool> _confirmDelete(String name) async {
+    final scheme = Theme.of(context).colorScheme;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: scheme.surface,
+        surfaceTintColor: scheme.surfaceTint,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete project?'),
+        content: Text('"$name" will be removed for good.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: scheme.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Projects Home"),
+        title: const Text('Projects'),
         backgroundColor: Colors.transparent,
       ),
-      body: Column(
-        children: [
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            width: double.infinity,
-            decoration: BoxDecoration(
-              border: Border.all(color: scheme.outline, width: 1),
-              borderRadius: const BorderRadius.all(Radius.circular(20)),
-              color: scheme.surface.withValues(alpha: 0.68),
-            ),
-            child: GestureDetector(
-              onTap: () async {
-                final result = await showDialog(
-                  context: context,
-                  builder: (context) => const AddProjectPopup(),
-                );
-                if (result != null) {
-                  addProject(result);
-                }
-              },
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  const Padding(padding: EdgeInsets.all(12)),
-                  Text(
-                    "Add New project Idea",
-                    style: TextStyle(
-                      fontSize: 20,
-                      color: scheme.onSurfaceVariant,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final result = await showDialog(
+            context: context,
+            builder: (context) => const AddProjectPopup(),
+          );
+          if (result != null) addProject(Map<String, String>.from(result));
+        },
+        child: const Icon(Icons.add),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : projects.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.lightbulb_outline_rounded,
+                      size: 56,
+                      color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'No project ideas yet',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Tap + to jot down your first idea — name, tech\nstack, and a rough timeline.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+              itemCount: projects.length,
+              itemBuilder: (context, index) {
+                final project = projects[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 14),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: scheme.surface.withValues(alpha: 0.72),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: scheme.outlineVariant.withValues(alpha: 0.28),
                     ),
                   ),
-                  const Icon(Icons.add),
-                ],
-              ),
-            ),
-          ),
-          Expanded(
-            child: projects.isEmpty
-                ? Center(
-                    child: Text(
-                      'No projects yet. Add your first idea.',
-                      style: TextStyle(color: scheme.onSurfaceVariant),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(10),
-                    itemCount: projects.length,
-                    itemBuilder: (context, index) {
-                      final project = projects[index];
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.all(16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: scheme.surface.withValues(alpha: 0.72),
+                          color: scheme.primary.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: scheme.outlineVariant.withValues(
-                              alpha: 0.28,
-                            ),
-                          ),
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        child: Icon(
+                          Icons.rocket_launch_rounded,
+                          size: 20,
+                          color: scheme.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                            Text(
+                              project['name'] ?? '',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                                color: scheme.onSurface,
+                              ),
+                            ),
+                            if ((project['desc'] ?? '').isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                project['desc']!,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                            if ((project['tech'] ?? '').isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: project['tech']!
+                                    .split(',')
+                                    .map((t) => t.trim())
+                                    .where((t) => t.isNotEmpty)
+                                    .map(
+                                      (t) => Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: scheme.surfaceContainerHighest
+                                              .withValues(alpha: 0.6),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          t,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: scheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                            ],
+                            if ((project['start_date'] ?? '').isNotEmpty ||
+                                (project['end_date'] ?? '').isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Row(
                                 children: [
-                                  Text(
-                                    project["name"]!,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: scheme.onSurface,
-                                    ),
+                                  Icon(
+                                    Icons.calendar_today_outlined,
+                                    size: 12,
+                                    color: scheme.onSurfaceVariant,
                                   ),
-                                  const SizedBox(height: 6),
+                                  const SizedBox(width: 4),
                                   Text(
-                                    project["desc"]!,
-                                    maxLines: 3,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    "Tech: ${project["tech"]!}",
+                                    '${project['start_date'] ?? '?'} → ${project['end_date'] ?? '?'}',
                                     style: TextStyle(
-                                      fontSize: 12,
-                                      color: scheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    "${project["start_date"]!}-${project["end_date"]!}",
-                                    style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 11.5,
                                       color: scheme.onSurfaceVariant,
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Row(
-                              children: [
-                                IconButton(
-                                  icon: Icon(Icons.edit, color: scheme.primary),
-                                  onPressed: () async {
-                                    final updatedProject =
-                                        await editProjectPopup(
-                                          context,
-                                          projects[index],
-                                        );
-
-                                    if (updatedProject != null) {
-                                      setState(() {
-                                        projects[index] = updatedProject;
-                                      });
-                                      await saveProjects();
-                                    }
-                                  },
-                                ),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.delete,
-                                    color: Colors.red,
-                                  ),
-                                  onPressed: () async {
-                                    setState(() {
-                                      projects.removeAt(index);
-                                    });
-                                    await saveProjects();
-                                  },
-                                ),
-                              ],
-                            ),
+                            ],
                           ],
                         ),
-                      );
-                    },
+                      ),
+                      Column(
+                        children: [
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            icon: Icon(
+                              Icons.edit_outlined,
+                              size: 20,
+                              color: scheme.primary,
+                            ),
+                            onPressed: () async {
+                              final updatedProject = await editProjectPopup(
+                                context,
+                                projects[index],
+                              );
+                              if (updatedProject != null) {
+                                setState(() {
+                                  projects[index] = updatedProject;
+                                });
+                                await saveProjects();
+                              }
+                            },
+                          ),
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            icon: Icon(
+                              Icons.delete_outline_rounded,
+                              size: 20,
+                              color: scheme.error,
+                            ),
+                            onPressed: () async {
+                              final ok = await _confirmDelete(
+                                project['name'] ?? 'this project',
+                              );
+                              if (!ok) return;
+                              setState(() => projects.removeAt(index));
+                              await saveProjects();
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-          ),
-        ],
-      ),
+                );
+              },
+            ),
     );
   }
 }

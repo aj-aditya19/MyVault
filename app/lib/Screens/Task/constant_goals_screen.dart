@@ -28,8 +28,6 @@ class GoalEntry {
 
   final String id;
   String name;
-  // The day this goal was added. Its history/tracking only starts here —
-  // days before this are never shown as "missed".
   final DateTime createdAt;
   final Map<String, bool> completion;
 
@@ -40,8 +38,6 @@ class GoalEntry {
     'completion': completion,
   };
 
-  // fallbackCreatedAt is used only when migrating goals saved before this
-  // field existed (old shared "startDate" from the previous version).
   factory GoalEntry.fromJson(
     Map<String, dynamic> json, {
     DateTime? fallbackCreatedAt,
@@ -88,8 +84,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
 
   static const String _boxName = 'constant_goals';
 
-  // The month currently shown in the grid. Defaults to the current month and
-  // always renders the 1st through the last day of that month.
   DateTime _monthCursor = _startOfMonth(DateTime.now());
   bool _loaded = false;
 
@@ -157,18 +151,19 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
 
   void _goToPreviousMonth() {
     setState(
-      () => _monthCursor = DateTime(_monthCursor.year, _monthCursor.month - 1, 1),
+      () =>
+          _monthCursor = DateTime(_monthCursor.year, _monthCursor.month - 1, 1),
     );
   }
 
   void _goToNextMonth() {
     if (_isCurrentMonth) return;
     setState(
-      () => _monthCursor = DateTime(_monthCursor.year, _monthCursor.month + 1, 1),
+      () =>
+          _monthCursor = DateTime(_monthCursor.year, _monthCursor.month + 1, 1),
     );
   }
 
-  // Always the 1st through the last day of the viewed month.
   List<DateTime> get _allDays {
     final start = _startOfMonth(_monthCursor);
     final end = _endOfMonth(_monthCursor);
@@ -195,8 +190,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
     return !dayStart.isBefore(g.createdAt) && !dayStart.isAfter(_todayStart);
   }
 
-  /// Null means: on this day, no goal existed yet / it's in the future —
-  /// there's simply no data, which is different from "0% done".
   double? _completionForDay(DateTime day) {
     final trackable = _goals.where((g) => _isTrackable(g, day)).toList();
     if (trackable.isEmpty) return null;
@@ -224,16 +217,13 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
     return values.reduce((a, b) => a + b) / values.length;
   }
 
-  /// Index (within the viewed month) of the week-row containing "today".
-  /// Only meaningful when viewing the current month.
   int get _currentWeekIndexInMonth =>
       ((_todayStart.day - 1) ~/ 7).clamp(0, math.max(0, _weeks.length - 1));
 
   double get _todayCompletionRate => _completionForDay(_todayStart) ?? 0;
 
   bool get _hasYesterday =>
-      _completionForDay(_todayStart.subtract(const Duration(days: 1))) !=
-      null;
+      _completionForDay(_todayStart.subtract(const Duration(days: 1))) != null;
 
   double get _yesterdayCompletionRate =>
       _completionForDay(_todayStart.subtract(const Duration(days: 1))) ?? 0;
@@ -241,9 +231,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
   double get _todayVsYesterdayDelta =>
       _todayCompletionRate - _yesterdayCompletionRate;
 
-  // These two compare rolling 7-day windows (not calendar-week chunks of the
-  // viewed month), so "vs last week" stays correct no matter which month is
-  // on screen.
   double? _rollingAverage({required int offsetDays}) {
     final values = List.generate(
       7,
@@ -278,8 +265,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
 
     if (decoded.isNotEmpty) {
       final rawGoals = (decoded['goals'] as List?) ?? [];
-      // Only used to backfill goals saved by the old version of this screen,
-      // which had no per-goal createdAt of its own.
       final legacyFallbackStart = _parseDateKey(
         decoded['startDate']?.toString(),
       );
@@ -317,7 +302,6 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
         GoalEntry(
           id: DateTime.now().microsecondsSinceEpoch.toString(),
           name: text,
-          // Tracking starts today — never from some earlier anchor date.
           createdAt: _todayStart,
         ),
       );
@@ -711,9 +695,7 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
     final weeksToShow = _isCurrentMonth
         ? (_currentWeekIndexInMonth + 1).clamp(1, totalWeeksInMonth)
         : totalWeeksInMonth;
-    final highlightWeekIndex = _isCurrentMonth
-        ? _currentWeekIndexInMonth
-        : -1;
+    final highlightWeekIndex = _isCurrentMonth ? _currentWeekIndexInMonth : -1;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -1026,9 +1008,7 @@ class _ConstantGoalsScreenState extends State<ConstantGoalsScreen> {
                       final done = goal.completion[key] == true;
                       final dayStart = _startOfDay(day);
                       final isFuture = dayStart.isAfter(_todayStart);
-                      final isBeforeCreated = dayStart.isBefore(
-                        goal.createdAt,
-                      );
+                      final isBeforeCreated = dayStart.isBefore(goal.createdAt);
                       final isDisabled = isFuture || isBeforeCreated;
                       final isToday = _dateKey(day) == _dateKey(_todayStart);
 

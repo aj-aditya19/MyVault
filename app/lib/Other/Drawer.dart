@@ -3,6 +3,7 @@ import 'package:app/Screens/Project/projecthome_screen.dart';
 import 'package:app/Screens/Quotes/quoteshome_screen.dart';
 import 'package:app/Screens/Values/valueshome_screen.dart';
 import 'package:app/Screens/Task/constant_goals_screen.dart';
+import 'package:app/Screens/Schedule/schedule_screen.dart';
 import 'package:app/Other/license_screen.dart';
 import 'package:app/Other/setting_screen.dart';
 import 'package:app/core/widgets/pin_gate.dart';
@@ -117,6 +118,17 @@ class _MyDrawerState extends State<MyDrawer> {
               );
             },
             leading: const Icon(Icons.flag_circle_outlined),
+          ),
+
+          ListTile(
+            title: const Text("Schedule"),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ScheduleScreen()),
+              );
+            },
+            leading: const Icon(Icons.calendar_month_outlined),
           ),
           Divider(),
           SwitchListTile.adaptive(

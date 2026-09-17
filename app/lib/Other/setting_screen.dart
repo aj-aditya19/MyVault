@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:app/Other/license_screen.dart';
-// import 'package:app/core/services/try.dart';
 import 'package:app/core/services/notification_service.dart';
 import 'package:app/core/services/pin_service.dart';
 import 'package:app/core/services/sync_manager.dart';
@@ -101,16 +100,6 @@ class _SettingScreenState extends State<SettingScreen> {
     await pinService.setBiometricEnabled(value);
     setState(() => _biometricEnabled = value);
   }
-
-  // Future<void> _toggleNotifications(bool value) async {
-  //   setState(() => notificationsEnabled = value);
-  //   if (value) {
-  //     await NotificationService.instance.init();
-  //     await DailyReminderService.schedule();
-  //   } else {
-  //     await DailyReminderService.cancelAll();
-  //   }
-  // }
 
   @override
   Widget build(BuildContext context) {

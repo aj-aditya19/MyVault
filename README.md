@@ -201,6 +201,7 @@ FIREBASE_WEB_API_KEY=your_web_api_key
 FIREBASE_ANDROID_API_KEY=your_android_api_key
 FIREBASE_IOS_API_KEY=your_ios_api_key
 FIREBASE_WINDOWS_API_KEY=your_windows_api_key
+MONBGODB_URL=your_mongodb_url
 ```
 
 Do **not** commit your `.env` file.
