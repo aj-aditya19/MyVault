@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -203,8 +204,27 @@ class StorageService {
       userId: SyncManager.currentUserId,
     );
 
+    // Local save always happens first and completes instantly, offline or
+    // not — this is the source of truth the UI reads back immediately.
     await file.writeAsString(encryptData(jsonEncode(envelope)));
-    await SyncManager.syncLocalBox(boxName, value);
+
+    // Push to the cloud in the background WITHOUT awaiting it. While
+    // offline, Firestore keeps a `set()` call's Future pending until it
+    // reconnects and the write is acknowledged — awaiting it here used to
+    // block this whole function (and anything the caller did after saving)
+    // until the device came back online. Firing it and letting it resolve
+    // on its own means the save always finishes right away; if this
+    // particular push doesn't make it, the box is simply picked up again by
+    // the next resync (live connectivity change or app resume — see
+    // SyncManager).
+    unawaited(
+      SyncManager.syncLocalBox(
+        boxName,
+        value,
+        updatedAt: _updatedAtOf(envelope),
+        updatedBy: envelope['updatedBy']?.toString(),
+      ),
+    );
   }
 
   static Future<void> syncAllLocalBoxesToCloud() async {
@@ -237,7 +257,28 @@ class StorageService {
         }
 
         final normalized = normalizeStoredValue(decoded, fallback: decoded);
-        await SyncManager.syncLocalBox(boxName, normalized);
+
+        // Carry over the box's real edit time/author instead of stamping a
+        // fresh "now" on every resync. Without this, an untouched box looks
+        // freshly edited every time a sync runs (login, reconnect, app
+        // resume, ...), which breaks last-write-wins comparisons against
+        // other devices and can let a genuinely newer edit lose a merge.
+        int? preservedUpdatedAt;
+        String? preservedUpdatedBy;
+        if (decoded is Map) {
+          final decodedMap = Map<String, dynamic>.from(decoded);
+          if (decodedMap.containsKey('updatedAt')) {
+            preservedUpdatedAt = _updatedAtOf(decodedMap);
+          }
+          preservedUpdatedBy = decodedMap['updatedBy']?.toString();
+        }
+
+        await SyncManager.syncLocalBox(
+          boxName,
+          normalized,
+          updatedAt: preservedUpdatedAt,
+          updatedBy: preservedUpdatedBy,
+        );
       } catch (_) {}
     }
   }

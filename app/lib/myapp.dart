@@ -32,8 +32,20 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Whenever the user comes back to the app, re-check whether today's
+    // task/budget or this week's task/budget have been set, so the
+    // reminder always reflects the current state instead of only what
+    // was true at cold-start.
     if (state == AppLifecycleState.resumed) {
       DailyReminderService.schedule();
+
+      // Also try to catch up any offline edits here. The live connectivity
+      // listener in SyncManager.initialize() covers reconnects that happen
+      // while the app is open, but it can miss cases where the device
+      // regains internet while the app was backgrounded — resuming is a
+      // second, reliable chance to pull remote changes and push anything
+      // that was saved locally while offline.
+      SyncManager.forceSyncNow();
     }
   }
 

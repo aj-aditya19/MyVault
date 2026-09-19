@@ -19,33 +19,20 @@ class SyncManager {
   static Future<void> initialize() async {
     if (_initialized) return;
 
-    print('SYNC: initialize() started');
-
     try {
-      print('SYNC: Firebase.apps = ${Firebase.apps.length}');
-
       if (Firebase.apps.isEmpty) {
-        print('SYNC: Calling Firebase.initializeApp()');
-
         await Firebase.initializeApp(
           options: DefaultFirebaseOptions.currentPlatform,
         );
-
-        print('SYNC: Firebase.initializeApp() completed');
       }
 
       _firebaseReady = true;
-      print('SYNC: Firebase READY = $_firebaseReady');
-    } catch (e, stackTrace) {
-      print('SYNC: Firebase initialization FAILED');
-      print('SYNC ERROR: $e');
-      print(stackTrace);
-
+    } catch (e) {
+      print('SYNC: Firebase initialization failed: $e');
       _firebaseReady = false;
     }
 
     _initialized = true;
-    print('SYNC: initialize() completed, ready=$_firebaseReady');
 
     _connectivity.onConnectivityChanged.listen((results) async {
       final hasConnection = results.any(
@@ -79,16 +66,12 @@ class SyncManager {
         password: password,
       );
 
-      print('Login successful.');
       return true;
     } on FirebaseAuthException catch (e) {
-      print('Firebase Login Error');
-      print('Code: ${e.code}');
-      print('Message: ${e.message}');
+      print('Firebase Login Error [${e.code}]: ${e.message}');
       return false;
     } catch (e) {
       print('Unexpected Login Error: $e');
-
       return false;
     }
   }
@@ -132,12 +115,9 @@ class SyncManager {
         }, SetOptions(merge: true));
       }
 
-      print('Account created successfully.');
       return true;
     } on FirebaseAuthException catch (e) {
-      print('Firebase Signup Error');
-      print('Code: ${e.code}');
-      print('Message: ${e.message}');
+      print('Firebase Signup Error [${e.code}]: ${e.message}');
       return false;
     } catch (e) {
       print('Unexpected Signup Error: $e');
@@ -198,22 +178,48 @@ class SyncManager {
     }
   }
 
+  /// Pulls the latest remote data and pushes any local changes. Wire this
+  /// into every moment we get a fresh chance to sync — live connectivity
+  /// changes (see the listener above) and app resume (see myapp.dart) —
+  /// because the connectivity stream alone can miss a reconnect on some
+  /// devices, which is what let offline edits sit unsynced before.
+  static Future<void> forceSyncNow() async {
+    if (!_firebaseReady || currentUserId == null) return;
+    await syncPendingChanges();
+  }
+
   static Map<String, dynamic> createSyncEnvelope(
     dynamic value, {
     String? userId,
     int? updatedAt,
+    String? updatedBy,
   }) {
     return {
       'value': value,
       'updatedAt': updatedAt ?? DateTime.now().millisecondsSinceEpoch,
-      'updatedBy': userId ?? currentUserId ?? 'local-device',
+      'updatedBy': updatedBy ?? userId ?? currentUserId ?? 'local-device',
     };
   }
 
-  static Future<void> syncLocalBox(String boxName, dynamic value) async {
+  /// Pushes [value] up to this user's cloud copy of [boxName]. Pass through
+  /// the box's real [updatedAt]/[updatedBy] when re-pushing an existing
+  /// envelope (e.g. during a full resync) — otherwise every sync stamps a
+  /// fresh "now", which makes an untouched box look freshly edited and
+  /// breaks last-write-wins comparisons against other devices.
+  static Future<void> syncLocalBox(
+    String boxName,
+    dynamic value, {
+    int? updatedAt,
+    String? updatedBy,
+  }) async {
     if (!_initialized || currentUserId == null) return;
 
-    final payload = createSyncEnvelope(value, userId: currentUserId);
+    final payload = createSyncEnvelope(
+      value,
+      userId: currentUserId,
+      updatedAt: updatedAt,
+      updatedBy: updatedBy,
+    );
 
     await syncEnvelope(boxName, payload);
   }
@@ -300,6 +306,12 @@ class SyncManager {
     return remoteValue;
   }
 
+  /// Pushes one envelope to Firestore. Bounded with a timeout so that a
+  /// write made while offline doesn't hang forever — Firestore normally
+  /// keeps such a Future pending until it reconnects, which is fine when
+  /// this is fired in the background (see StorageService.write) but we
+  /// still want it to fail fast and get retried by the next resync rather
+  /// than leaking an unresolved Future indefinitely.
   static Future<void> syncEnvelope(
     String boxName,
     Map<String, dynamic> envelope,
@@ -312,8 +324,12 @@ class SyncManager {
           .doc(currentUserId)
           .collection('boxes')
           .doc(boxName)
-          .set(envelope, SetOptions(merge: true));
+          .set(envelope, SetOptions(merge: true))
+          .timeout(const Duration(seconds: 15));
     } catch (e) {
+      // Offline, or timed out waiting for a connection — that's fine, the
+      // local copy already has this change and the next resync (live
+      // connectivity change or app resume) will push it again.
       print('Sync envelope failed for $boxName: $e');
     }
   }
