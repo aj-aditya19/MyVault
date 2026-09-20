@@ -29,6 +29,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _resetEmailController = TextEditingController();
 
   bool _isCreateAccount = false;
   bool _isLoading = false;
@@ -40,6 +41,7 @@ class _AuthScreenState extends State<AuthScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _resetEmailController.dispose();
     super.dispose();
   }
 
@@ -65,12 +67,12 @@ class _AuthScreenState extends State<AuthScreen> {
     }
 
     if (success) {
-  await StorageService.syncAllBoxes();
+      await StorageService.syncAllBoxes();
 
-  if (widget.onAuthSuccess != null) {
-    await widget.onAuthSuccess!();
-  }
-}
+      if (widget.onAuthSuccess != null) {
+        await widget.onAuthSuccess!();
+      }
+    }
 
     if (!mounted) return;
 
@@ -98,6 +100,82 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
       );
     }
+  }
+
+  Future<void> _openForgotPasswordDialog() async {
+    _resetEmailController.text = _emailController.text.trim();
+    final dialogFormKey = GlobalKey<FormState>();
+
+    final email = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Reset your password'),
+          content: Form(
+            key: dialogFormKey,
+            child: TextFormField(
+              controller: _resetEmailController,
+              autofocus: true,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
+              validator: (value) {
+                final trimmed = value?.trim() ?? '';
+                if (trimmed.isEmpty) return 'Email is required';
+                if (!trimmed.contains('@') || !trimmed.contains('.')) {
+                  return 'Enter a valid email';
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (dialogFormKey.currentState?.validate() ?? false) {
+                  Navigator.pop(
+                    dialogContext,
+                    _resetEmailController.text.trim(),
+                  );
+                }
+              },
+              child: const Text('Send reset link'),
+            ),
+          ],
+        );
+      },
+    );
+
+    // Note: we deliberately do NOT dispose `_resetEmailController` here.
+    // showDialog's Future completes as soon as Navigator.pop runs, but the
+    // dialog's own exit animation is still tearing the widget down for a
+    // bit afterwards — disposing the controller immediately raced with that
+    // animation and crashed with "TextEditingController used after being
+    // disposed". It's a normal field now, so it lives for as long as this
+    // screen does and gets disposed once, safely, in dispose() above.
+
+    if (email == null || email.isEmpty || !mounted) return;
+
+    setState(() => _isLoading = true);
+    final sent = await SyncManager.sendPasswordResetEmail(email);
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          sent
+              ? 'If an account exists for $email, a reset link has been sent.'
+              : 'Could not send the reset email. Check the address and try again.',
+        ),
+      ),
+    );
   }
 
   Future<void> _skipForNow() async {
@@ -229,6 +307,17 @@ class _AuthScreenState extends State<AuthScreen> {
                           return null;
                         },
                       ),
+                      if (!_isCreateAccount) ...[
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: _isLoading
+                                ? null
+                                : _openForgotPasswordDialog,
+                            child: const Text('Forgot password?'),
+                          ),
+                        ),
+                      ],
                       if (_isCreateAccount) ...[
                         const SizedBox(height: 12),
                         TextFormField(

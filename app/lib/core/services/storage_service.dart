@@ -283,6 +283,29 @@ class StorageService {
     }
   }
 
+  /// Deletes every local data file (all the `.box.txt` files under the
+  /// MyVault folder on this device) without touching anything in Firestore.
+  /// Used on logout: the account's data stays safe on the server, it's just
+  /// wiped from this device until the user signs back in and `syncAllBoxes`
+  /// pulls it down again.
+  static Future<void> clearAllLocalBoxes() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final myVaultDir = Directory('${dir.path}/MyVault');
+      if (!await myVaultDir.exists()) return;
+
+      final files = myVaultDir.listSync().whereType<File>().where(
+        (file) => file.path.endsWith('.box.txt'),
+      );
+
+      for (final file in files) {
+        try {
+          await file.delete();
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
   static Future<void> syncAllBoxes() async {
     if (!SyncManager.isSignedIn) return;
 

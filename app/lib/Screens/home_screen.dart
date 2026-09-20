@@ -53,6 +53,40 @@ class _HomeScreenState extends State<HomeScreen> {
     ),
   ];
 
+  // container
+  // Widget _buildGlassContainer(BuildContext context, Widget child) {
+  //   final isDark = Theme.of(context).brightness == Brightness.dark;
+
+  //   return Container(
+  //     margin: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+  //     padding: const EdgeInsets.all(10),
+  //     decoration: BoxDecoration(
+  //       borderRadius: BorderRadius.circular(26),
+  //       color: Theme.of(
+  //         context,
+  //       ).colorScheme.surface.withValues(alpha: isDark ? 0.22 : 0.68),
+  //       border: Border.all(
+  //         color: Theme.of(
+  //           context,
+  //         ).colorScheme.outlineVariant.withValues(alpha: 0.32),
+  //       ),
+  //       boxShadow: [
+  //         BoxShadow(
+  //           color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.10),
+  //           blurRadius: 26,
+  //           offset: const Offset(0, 12),
+  //         ),
+  //       ],
+  //     ),
+  //     child: AnimatedSwitcher(
+  //       duration: const Duration(milliseconds: 1000),
+  //       switchInCurve: Curves.easeOutCubic,
+  //       switchOutCurve: Curves.easeInCubic,
+  //       child: KeyedSubtree(key: ValueKey(selectedIndex), child: child),
+  //     ),
+  //   );
+  // }
+
   @override
   Widget build(BuildContext context) {
     final useSideNav = Responsive.useSideNav(context);
@@ -70,6 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: SizedBox(
             width: cappedWidth,
             height: double.infinity,
+            // child: _buildGlassContainer(context, screens[selectedIndex]),
             child: screens[selectedIndex],
           ),
         );
@@ -81,6 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
       drawer: MyDrawer(
         themeMode: widget.themeMode,
         onThemeModeChanged: widget.onThemeModeChanged,
+        onLoggedOut: widget.onLoginRequested,
       ),
       appBar: Appbar(
         themeMode: widget.themeMode,

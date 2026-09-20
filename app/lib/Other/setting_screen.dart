@@ -3,17 +3,20 @@ import 'package:provider/provider.dart';
 import 'package:app/Other/license_screen.dart';
 import 'package:app/core/services/notification_service.dart';
 import 'package:app/core/services/pin_service.dart';
+import 'package:app/core/services/storage_service.dart';
 import 'package:app/core/services/sync_manager.dart';
 import 'package:app/core/widgets/pin_gate.dart';
 
 class SettingScreen extends StatefulWidget {
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode> onThemeModeChanged;
+  final VoidCallback? onLoggedOut;
 
   const SettingScreen({
     super.key,
     required this.themeMode,
     required this.onThemeModeChanged,
+    this.onLoggedOut,
   });
 
   @override
@@ -69,6 +72,61 @@ class _SettingScreenState extends State<SettingScreen> {
     _loadSecurityState();
   }
 
+  Future<void> _signOut(BuildContext listContext) async {
+    final confirmed = await showDialog<bool>(
+      context: listContext,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Sign out?'),
+        content: const Text(
+          'This removes your data from this device only. It stays safely '
+          'saved on the server and comes back automatically the next time '
+          'you log in — on this device or any other.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    // Order matters: sign out of Firebase FIRST, while we can still prove
+    // who we are, so any last pending write finishes against the right
+    // account — then wipe the local copies. Firestore itself is untouched.
+    await SyncManager.signOut();
+    await StorageService.clearAllLocalBoxes();
+
+    if (!mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Signed out'),
+        content: const Text(
+          'Your data has been removed from this device, but it is still '
+          'saved on the server. Log back in anytime to get it back.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+
+    if (!mounted) return;
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    widget.onLoggedOut?.call();
+  }
+
   Future<void> _removePin() async {
     final pinService = context.read<PinService>();
     final verified = await ensureSectionUnlocked(
@@ -100,6 +158,16 @@ class _SettingScreenState extends State<SettingScreen> {
     await pinService.setBiometricEnabled(value);
     setState(() => _biometricEnabled = value);
   }
+
+  // Future<void> _toggleNotifications(bool value) async {
+  //   setState(() => notificationsEnabled = value);
+  //   if (value) {
+  //     await NotificationService.instance.init();
+  //     await DailyReminderService.schedule();
+  //   } else {
+  //     await DailyReminderService.cancelAll();
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -245,11 +313,7 @@ class _SettingScreenState extends State<SettingScreen> {
                     leading: const Icon(Icons.logout),
                     title: const Text('Sign out'),
                     subtitle: const Text('Logout from your synced account'),
-                    onTap: () async {
-                      await SyncManager.signOut();
-                      if (!context.mounted) return;
-                      Navigator.of(context).popUntil((route) => route.isFirst);
-                    },
+                    onTap: () => _signOut(context),
                   ),
                 ],
                 const Divider(height: 1),

@@ -125,6 +125,27 @@ class SyncManager {
     }
   }
 
+  /// Sends the user a secure password-reset link through Firebase's own
+  /// mail system. This is deliberately NOT a custom OTP-over-SMTP flow —
+  /// that would require embedding real email credentials inside the app,
+  /// which anyone could pull back out of the compiled APK. Firebase handles
+  /// the actual sending on its own servers, so no secret ever needs to live
+  /// on the client.
+  static Future<bool> sendPasswordResetEmail(String email) async {
+    if (!_firebaseReady) return false;
+
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      return true;
+    } on FirebaseAuthException catch (e) {
+      print('Password reset error [${e.code}]: ${e.message}');
+      return false;
+    } catch (e) {
+      print('Unexpected password reset error: $e');
+      return false;
+    }
+  }
+
   static Future<void> signOut() async {
     if (!_firebaseReady) return;
     await _auth.signOut();

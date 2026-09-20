@@ -17,6 +17,11 @@ class _ProjecthomeState extends State<Projecthome> {
 
   static const String _boxName = 'project_ideas';
 
+  // A brand-new user always starts with a blank list. Later this is the
+  // spot to pull a curated set of starter project ideas from the remote
+  // database instead — but only if the user has never saved any of their
+  // own (loadedProjects stays empty).
+
   @override
   void initState() {
     super.initState();
