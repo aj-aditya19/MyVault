@@ -25,6 +25,7 @@
 
 <br/>
 
+[📥 Download](#download) •
 [✨ Features](#features) •
 [📸 Screenshots](#screenshots) •
 [🏗️ Architecture](#architecture) •
@@ -43,6 +44,27 @@
 It's built **offline-first**: everything works without an account or internet connection, is stored encrypted on your device, and optionally syncs to the cloud when you sign in.
 
 > 💡 _"Small steps count. Set one task and one budget for today, then make it happen."_
+
+---
+
+## Download
+
+<div align="center">
+
+[![Download APK](https://img.shields.io/badge/Download-Android%20APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/aj-aditya19/MyVault/releases/download/v.21.9/MyVault.apk)
+[![Download EXE](https://img.shields.io/badge/Download-Windows%20EXE-0078D4?style=for-the-badge&logo=windows11&logoColor=white)](https://github.com/aj-aditya19/MyVault/releases/download/v.21.9/MyVault.exe)
+
+<sub>Looking for older versions? See all <a href="https://github.com/aj-aditya19/MyVault/releases">releases</a>.</sub>
+
+</div>
+
+<details>
+<summary><b>Installation notes</b></summary>
+
+- **Android:** open the downloaded APK and allow **Install unknown apps** for your browser or file manager when asked.
+- **Windows:** if SmartScreen shows a warning, click **More info → Run anyway**.
+
+</details>
 
 ---
 
