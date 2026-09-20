@@ -152,14 +152,6 @@ class _AuthScreenState extends State<AuthScreen> {
       },
     );
 
-    // Note: we deliberately do NOT dispose `_resetEmailController` here.
-    // showDialog's Future completes as soon as Navigator.pop runs, but the
-    // dialog's own exit animation is still tearing the widget down for a
-    // bit afterwards — disposing the controller immediately raced with that
-    // animation and crashed with "TextEditingController used after being
-    // disposed". It's a normal field now, so it lives for as long as this
-    // screen does and gets disposed once, safely, in dispose() above.
-
     if (email == null || email.isEmpty || !mounted) return;
 
     setState(() => _isLoading = true);

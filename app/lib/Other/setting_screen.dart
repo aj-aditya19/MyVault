@@ -96,10 +96,6 @@ class _SettingScreenState extends State<SettingScreen> {
     );
 
     if (confirmed != true || !mounted) return;
-
-    // Order matters: sign out of Firebase FIRST, while we can still prove
-    // who we are, so any last pending write finishes against the right
-    // account — then wipe the local copies. Firestore itself is untouched.
     await SyncManager.signOut();
     await StorageService.clearAllLocalBoxes();
 
@@ -158,16 +154,6 @@ class _SettingScreenState extends State<SettingScreen> {
     await pinService.setBiometricEnabled(value);
     setState(() => _biometricEnabled = value);
   }
-
-  // Future<void> _toggleNotifications(bool value) async {
-  //   setState(() => notificationsEnabled = value);
-  //   if (value) {
-  //     await NotificationService.instance.init();
-  //     await DailyReminderService.schedule();
-  //   } else {
-  //     await DailyReminderService.cancelAll();
-  //   }
-  // }
 
   @override
   Widget build(BuildContext context) {
