@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.app"
+    namespace = "com.myvault.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

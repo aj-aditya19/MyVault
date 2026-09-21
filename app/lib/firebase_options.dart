@@ -59,7 +59,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '301397469876',
     projectId: 'myvault-0602',
     storageBucket: 'myvault-0602.firebasestorage.app',
-    iosBundleId: 'com.example.app',
+    iosBundleId: 'com.myvault.app',
   );
 
   static FirebaseOptions get macos => FirebaseOptions(
@@ -68,7 +68,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '301397469876',
     projectId: 'myvault-0602',
     storageBucket: 'myvault-0602.firebasestorage.app',
-    iosBundleId: 'com.example.app',
+    iosBundleId: 'com.myvault.app',
   );
 
   static FirebaseOptions get windows => FirebaseOptions(
